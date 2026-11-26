@@ -440,3 +440,26 @@ window.QUESTIONS = [
       {t:'Convection: in liquids/gases, hot rises, cold sinks (currents)', k:['liquid*|gas*|fluid*|rise*|rising|current*|sink*']},
       {t:'Radiation: infrared waves, no medium, through a vacuum', k:['wave*|infrared|vacuum|space|sun|electromagnetic|no particle*|without particle*|no medium']} ]} ] }
 ];
+
+/* ---------- set registry & per-question defaults ----------
+   A "set" is one playable collection (subject + grade + semester). Each set owns its
+   topic list; questions carry set/subject/grade/semester/level so future sets can be
+   added without touching game code. `level` (1-4) is derived from tier for now. */
+window.SETS = {
+  'sci-g8s1': {
+    id: 'sci-g8s1',
+    name: 'Science',
+    grade: 8,
+    semester: 1,
+    icon: '🧪',
+    label: '🧬 Science · Grade 8 · Sem 1',
+    topics: window.TOPICS
+  }
+};
+window.QUESTIONS.forEach(q => {
+  q.set = q.set || 'sci-g8s1';
+  q.subject = q.subject || 'science';
+  q.grade = q.grade || 8;
+  q.semester = q.semester || 1;
+  q.level = q.level || (q.tier <= 200 ? 1 : q.tier === 300 ? 2 : q.tier === 400 ? 3 : 4);
+});

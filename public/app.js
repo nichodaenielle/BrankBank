@@ -29,8 +29,8 @@ const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(
 const seededShuffle = (a, rnd) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const signed = n => n > 0 ? '+' + money(n) : n < 0 ? '−' + money(-n) : '$0';
 const TITLES = [[0.9, 'Legend'], [0.75, 'Master'], [0.55, 'Expert'], [0.35, 'Scholar'], [0.15, 'Apprentice'], [0, 'Rookie']];
-const topicName = id => TOPICS.find(t => t.id === id).name;
-const topicIcon = id => TOPICS.find(t => t.id === id).icon;
+const topicName = id => setTopics().find(t => t.id === id).name;
+const topicIcon = id => setTopics().find(t => t.id === id).icon;
 const money = n => '$' + Math.round(n).toLocaleString();
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -158,8 +158,17 @@ function gradeExplain(input, q) {
 const parseNum = s => { const m = String(s).replace(/,/g, '.').replace(/\s/g, '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
 
 /* ---------- state ---------- */
-const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
+const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), set: store.get('set', 'sci-g8s1'), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
 let lbScope = S.mode, lbMode = 'game';
+
+/* ---------- sets (subject / grade / semester collections) ---------- */
+const SETS = window.SETS || {};
+const setList = () => Object.values(SETS);
+const setById = id => SETS[id] || setList()[0];
+const setTopics = () => setById(S.set).topics;
+const setQuestions = () => QUESTIONS.filter(q => (q.set || 'sci-g8s1') === S.set);
+const setWords = () => { const ids = new Set(setTopics().map(t => t.id)); return WORDS.filter(w => ids.has(w[1])); };
+function setSet(id) { if (!SETS[id]) return; S.set = id; store.set('set', id); }
 
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('active', s.id === id)); window.scrollTo(0, 0); if (id === 'scr-landing' || id === 'scr-welcome') musicStart(); }
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
@@ -229,7 +238,7 @@ function refreshWelcome() {
   const d = store.get('daily', { last: '', n: 0 }), today = manilaDay();
   const alive = d.last === today || d.last === dayBefore(today);
   $('#daily-info').textContent = (d.last === today ? '✓ played today' : '5 questions · same for everyone') + (alive && d.n ? ` · 🔥 ${d.n}-day streak` : '');
-  const m = store.get('misses', []).filter(id => QUESTIONS.some(q => q.id === id));
+  const m = store.get('misses', []).filter(id => setQuestions().some(q => q.id === id));
   $('#miss-count').textContent = m.length ? `(${m.length})` : '';
   $('#btn-review').disabled = !m.length;
   $('#btn-review').title = m.length ? 'Practise the questions you got wrong' : 'No missed questions yet';
@@ -288,11 +297,11 @@ function initWelcome() {
 }
 
 /* ---------- game ---------- */
-const pool = (topic, tier, used) => QUESTIONS.filter(q => q.topic === topic && q.tier === tier && !used.has(q.id));
+const pool = (topic, tier, used) => setQuestions().filter(q => q.topic === topic && q.tier === tier && !used.has(q.id));
 function dailyQueue(day) {
   const rnd = mulberry(hashStr('brainbank|' + day));
-  const topics = seededShuffle(TOPICS.map(t => t.id), rnd);
-  return TIERS.map((tier, i) => { const list = QUESTIONS.filter(q => q.topic === topics[i] && q.tier === tier); return { q: list[rnd() * list.length | 0], tier, done: false }; });
+  const topics = seededShuffle(setTopics().map(t => t.id), rnd);
+  return TIERS.map((tier, i) => { const list = setQuestions().filter(q => q.topic === topics[i] && q.tier === tier); return { q: list[rnd() * list.length | 0], tier, done: false }; });
 }
 function startGame(kind) {
   if (kind === 'word') return startPuzzle();
@@ -309,13 +318,13 @@ function startGame(kind) {
   updateScore(false);
   const used = new Set();
   if (kind === 'game') {
-    S.board = TOPICS.map(t => TIERS.map(tier => { const q = shuffle(pool(t.id, tier, used))[0]; used.add(q.id); return { q, tier, done: false }; }));
+    S.board = setTopics().map(t => TIERS.map(tier => { const q = shuffle(pool(t.id, tier, used))[0]; used.add(q.id); return { q, tier, done: false }; }));
     const ddCells = S.board.flat().filter(c => c.tier >= 300);
     shuffle(ddCells)[0].dd = true;
     renderBoard();
     $('#board').hidden = false;
   } else {
-    S.queue = kind === 'daily' ? dailyQueue(S.day) : shuffle(TIERS.flatMap(tier => shuffle(QUESTIONS.filter(q => q.tier === tier)).slice(0, 2).map(q => ({ q, tier, done: false }))));
+    S.queue = kind === 'daily' ? dailyQueue(S.day) : shuffle(TIERS.flatMap(tier => shuffle(setQuestions().filter(q => q.tier === tier)).slice(0, 2).map(q => ({ q, tier, done: false }))));
     S.qi = 0;
     renderPop();
   }
@@ -332,7 +341,7 @@ function updateScore(bump = true) {
   sk.textContent = '🔥 ' + S.streak + (S.streak >= 5 ? ' · +25%' : S.streak >= 3 ? ' · +10%' : '');
 }
 function renderBoard() {
-  $('#board').innerHTML = TOPICS.map((t, ti) => `<div class="col"><div class="col-h"><span class="ic">${t.icon}</span>${t.name}</div>
+  $('#board').innerHTML = setTopics().map((t, ti) => `<div class="col"><div class="col-h"><span class="ic">${t.icon}</span>${t.name}</div>
     ${S.board[ti].map((c, i) => `<div class="tile ${c.done ? 'done ' + (c.earned > 0 ? 'ok' : 'bad') : ''}"><button data-t="${ti}" data-i="${i}" ${c.done ? 'disabled' : ''} aria-label="${t.name} for ${c.tier} dollars">
       ${c.done ? (c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier) + `<small>${TYPE_NAME[c.q.type]}</small>`}</button></div>`).join('')}</div>`).join('');
   $$('#board .tile button').forEach(b => b.onclick = () => openCard(S.board[b.dataset.t][b.dataset.i]));
@@ -347,7 +356,7 @@ function renderPop() {
 }
 function renderWager() {
   const used = new Set(S.board.flat().map(c => c.q.id));
-  const q = shuffle(QUESTIONS.filter(x => x.tier === 500 && !used.has(x.id)))[0];
+  const q = shuffle(setQuestions().filter(x => x.tier === 500 && !used.has(x.id)))[0];
   if (!q) return endGame();
   const max = S.score;
   S.wager = { q, bet: Math.round(max / 2) };
@@ -366,7 +375,7 @@ function renderWager() {
   sfx.dd(); updateScore(false);
 }
 function startReview(ids) {
-  ids = [...new Set(ids)].filter(id => QUESTIONS.some(q => q.id === id));
+  ids = [...new Set(ids)].filter(id => setQuestions().some(q => q.id === id));
   if (!ids.length) return toast('No missed questions to practise. 🎉');
   musicStop(); stopTimer();
   S.log = []; S.review = { queue: shuffle(ids), mastered: 0, total: ids.length, last: null };
@@ -374,7 +383,7 @@ function startReview(ids) {
   $('#hud-mode').textContent = '🔁 Review my misses · practice (not scored)';
   $('#hud-streak').hidden = true;
   show('scr-board'); drawReview();
-  setTimeout(() => openCard({ q: QUESTIONS.find(q => q.id === S.review.queue[0]), tier: 0 }, true), 250);
+  setTimeout(() => openCard({ q: setQuestions().find(q => q.id === S.review.queue[0]), tier: 0 }, true), 250);
 }
 function drawReview() {
   const R = S.review;
@@ -383,7 +392,7 @@ function drawReview() {
     ${R.queue.length ? '<button class="btn big gold" id="rv-go">Continue →</button>' : '<h3>🎉 All mastered! Great work.</h3><button class="btn big gold" id="rv-done">Back to Home</button>'}</div>`;
   $('#hud-score').textContent = R.mastered + '/' + R.total;
   $('#hud-left').textContent = R.queue.length + ' to go';
-  const go = $('#rv-go'); if (go) go.onclick = () => openCard({ q: QUESTIONS.find(q => q.id === R.queue[0]), tier: 0 }, true);
+  const go = $('#rv-go'); if (go) go.onclick = () => openCard({ q: setQuestions().find(q => q.id === R.queue[0]), tier: 0 }, true);
   const done = $('#rv-done'); if (done) done.onclick = endReview;
 }
 function reviewNext() {
@@ -391,7 +400,7 @@ function reviewNext() {
   if (R.last !== null) { const id = R.queue.shift(); if (R.last) R.mastered++; else R.queue.push(id); R.last = null; }
   drawReview();
   if (!R.queue.length) { confetti(180); sfx.end(); return; }
-  setTimeout(() => openCard({ q: QUESTIONS.find(q => q.id === R.queue[0]), tier: 0 }, true), 200);
+  setTimeout(() => openCard({ q: setQuestions().find(q => q.id === R.queue[0]), tier: 0 }, true), 200);
 }
 function endReview() { stopTimer(); $('#modal').hidden = true; S.card = null; S.review = null; $('#btn-home').click(); }
 function quitGame() {
@@ -733,7 +742,7 @@ async function endGame() {
   $('#res-badge').textContent = '🎖️ ' + titleFor(S.score, S.kind);
   $('#res-stats').innerHTML = `<div><b>${correct}/${total}</b>correct</div><div><b>${total ? Math.round(correct / total * 100) : 0}%</b>accuracy</div><div><b>${fmtTime(ms)}</b>time</div><div><b>${S.log.filter(l => l.ok && l.tries === 1).length}</b>first-try</div>`;
   const by = {}; S.log.forEach(l => { const t = l.q.topic; by[t] = by[t] || { ok: 0, n: 0 }; by[t].n++; if (l.ok) by[t].ok++; });
-  $('#res-topics').innerHTML = TOPICS.filter(t => by[t.id]).map(t => `<div>${t.icon} ${t.name}<br>${by[t.id].ok}/${by[t.id].n}<div class="bar"><i style="width:${by[t.id].ok / by[t.id].n * 100}%"></i></div></div>`).join('');
+  $('#res-topics').innerHTML = setTopics().filter(t => by[t.id]).map(t => `<div>${t.icon} ${t.name}<br>${by[t.id].ok}/${by[t.id].n}<div class="bar"><i style="width:${by[t.id].ok / by[t.id].n * 100}%"></i></div></div>`).join('');
   const sorted = S.log.slice().sort((a, b) => a.ok - b.ok);
   $('#res-missed').innerHTML = sorted.length ? sorted.map(l => `<div class="m ${l.ok ? 'ok' : ''}"><small>${l.ok ? '✅ ' : '❌ '}${signed(l.earned)} · ${topicIcon(l.q.topic)} ${l.final ? '💰 Final Wager ' + money(l.wager) : money(l.tier)} · ${TYPE_NAME[l.q.type]}</small><p>${esc(l.q.q)}</p><p class="a">${answerHTML(l.q)}</p></div>`).join('') : '<p>No cards answered.</p>';
   show('scr-results');
@@ -790,21 +799,21 @@ async function shareCard() {
 let bankOrder = null;
 function openBank() {
   const sel = $('#bank-topic');
-  sel.innerHTML = '<option value="">All topics</option>' + TOPICS.map(t => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
+  sel.innerHTML = '<option value="">All topics</option>' + setTopics().map(t => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
   S.review = null; bankOrder = null; drawBank(); show('scr-bank');
 }
 function drawBank() {
   const term = norm($('#bank-search').value), tp = $('#bank-topic').value, tr = $('#bank-tier').value;
-  let list = (bankOrder || QUESTIONS.slice().sort((a, b) => TOPICS.findIndex(t => t.id === a.topic) - TOPICS.findIndex(t => t.id === b.topic) || a.tier - b.tier));
+  let list = (bankOrder || setQuestions().slice().sort((a, b) => setTopics().findIndex(t => t.id === a.topic) - setTopics().findIndex(t => t.id === b.topic) || a.tier - b.tier));
   list = list.filter(q => (!tp || q.topic === tp) && (!tr || q.tier === +tr) && (!term || norm(q.q + ' ' + answerText(q)).includes(term)));
-  $('#bank-count').textContent = `${list.length} of ${QUESTIONS.length} questions`;
+  $('#bank-count').textContent = `${list.length} of ${setQuestions().length} questions`;
   $('#bank-list').innerHTML = list.map(q => `<div class="bq"><div class="top"><span class="chip">${topicIcon(q.topic)} ${topicName(q.topic)}</span><span class="chip type">${TYPE_NAME[q.type]}</span><span class="v">${money(q.tier)}</span></div>
     <p>${esc(q.q)}</p>${q.img ? `<img src="${q.img}" alt="" loading="lazy">` : ''}
     <div class="ans" hidden>${answerHTML(q)}${q.why && q.type !== 'explain' ? '<br><i>' + esc(q.why) + '</i>' : ''}${q.src === 'added' ? '<br><span class="src-added">Answer key prepared for this reviewer</span>' : ''}</div>
     <div class="row"><button class="btn small ghost" data-act="show">👀 Show answer</button><button class="btn small teal" data-act="try" data-id="${q.id}">✏️ Try it</button></div></div>`).join('');
   $$('#bank-list .bq').forEach(card => {
     card.querySelector('[data-act=show]').onclick = e => { const a = card.querySelector('.ans'); a.hidden = !a.hidden; e.target.textContent = a.hidden ? '👀 Show answer' : '🙈 Hide answer'; };
-    card.querySelector('[data-act=try]').onclick = e => openCard({ q: QUESTIONS.find(x => x.id === e.target.dataset.id), tier: 0 }, true);
+    card.querySelector('[data-act=try]').onclick = e => openCard({ q: setQuestions().find(x => x.id === e.target.dataset.id), tier: 0 }, true);
   });
 }
 
@@ -865,7 +874,7 @@ const wordValue = w => Math.min(500, Math.round((100 + 30 * (w.length - 3)) / 10
 const wpCells = wd => [...wd.w].map((_, i) => WP.cells.get(wpKey(wd.r + (wd.dir === 'd' ? i : 0), wd.c + (wd.dir === 'a' ? i : 0))));
 function startPuzzle() {
   S.kind = 'word'; S.score = 0; S.log = []; S.start = Date.now(); S.practice = false; S.streak = 0; S.bestStreak = 0; S.lifeUsed = 0; S.wager = null; S.review = null; S.card = null;
-  const cw = buildCrossword(WORDS);
+  const cw = buildCrossword(setWords());
   WP.words = cw.words.map(p => ({ ...p, base: wordValue(p.w), value: wordValue(p.w), tries: 0, status: 'open' }));
   WP.cells = new Map(); WP.last = Date.now(); WP.cur = null;
   WP.words.forEach((wd, idx) => [...wd.w].forEach((ch, i) => {
@@ -1029,7 +1038,7 @@ function init() {
   $('#btn-home').onclick = () => { musicStop(); S.review = null; refreshWelcome(); show('scr-welcome'); lbScope = S.mode; lbMode = S.kind; $$('#lb-scope button').forEach(b => b.classList.toggle('on', b.dataset.scope === lbScope)); $$('#lb-mode button').forEach(b => b.classList.toggle('on', b.dataset.lbmode === lbMode)); loadLB(); };
   $('#bank-back').onclick = () => show('scr-welcome');
   $('#bank-search').oninput = drawBank; $('#bank-topic').onchange = drawBank; $('#bank-tier').onchange = drawBank;
-  $('#bank-shuffle').onclick = () => { bankOrder = shuffle(QUESTIONS); drawBank(); };
+  $('#bank-shuffle').onclick = () => { bankOrder = shuffle(setQuestions()); drawBank(); };
   document.addEventListener('keydown', e => {
     if ($('#modal').hidden) return;
     if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); S.card && S.card.over ? nextCard() : submit(); }
@@ -1037,6 +1046,6 @@ function init() {
   });
   window.addEventListener('beforeunload', e => { if (($('#scr-board').classList.contains('active') || $('#scr-word').classList.contains('active')) && S.log.length) { e.preventDefault(); e.returnValue = ''; } });
 }
-window.__sbq = { shortMatch, gradeExplain, norm, S, dailyQueue, manilaDay, WP };
+window.__sbq = { shortMatch, gradeExplain, norm, S, dailyQueue, manilaDay, WP, SETS, setTopics, setQuestions };
 init();
 })();
