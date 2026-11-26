@@ -62,6 +62,14 @@
             <button class="mode on" data-mode="comp"><b>🌐 Competition</b><small>Scores go on the shared online leaderboard</small></button>
             <button class="mode" data-mode="solo"><b>📱 Individual Challenge</b><small>Scores saved on this device only</small></button>
           </div>
+          <div class="cls-row" id="set-row"><label class="lbl" for="set-sel">📚 Question set</label><select id="set-sel"></select></div>
+          <div class="pq-row" id="pq-row">
+            <label class="lbl" for="pq-topic">🎯 Pop Quiz focus <small>(optional)</small></label>
+            <div class="pq-sels">
+              <select id="pq-topic"><option value="">All topics</option></select>
+              <select id="pq-level"><option value="">Any difficulty</option><option value="1">Level 1 · Easy</option><option value="2">Level 2 · Medium</option><option value="3">Level 3 · Hard</option><option value="4">Level 4 · Expert</option></select>
+            </div>
+          </div>
           <div class="cls-row" id="cls-row"><label class="lbl" for="cls">🏫 Class code <small>(optional — joins your class leaderboard &amp; live screen)</small></label><input id="cls" maxlength="16" placeholder="e.g. 8-RIZAL" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
           <div class="play-row">
             <button class="btn big gold" id="btn-game">🎲 Play Bank Board</button>
@@ -233,6 +241,16 @@
       <button class="btn ghost" id="c-forfeit">🏳️ Forfeit</button>
       <button class="btn gold" id="c-submit">Submit</button>
       <button class="btn teal" id="c-next" hidden>Continue →</button>
+    </div>
+  </div>
+</div>
+<div id="confirm-modal" class="modal" hidden>
+  <div class="confirm-box" role="alertdialog" aria-modal="true">
+    <div class="cf-ico" id="cf-ico">❓</div>
+    <p id="cf-msg" class="cf-msg"></p>
+    <div class="cf-acts">
+      <button class="btn ghost" id="cf-no" type="button">Cancel</button>
+      <button class="btn gold" id="cf-yes" type="button">Yes</button>
     </div>
   </div>
 </div>

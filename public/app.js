@@ -34,7 +34,7 @@ const topicIcon = id => setTopics().find(t => t.id === id).icon;
 const money = n => '$' + Math.round(n).toLocaleString();
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const titleFor = (score, mode) => TITLES.find(([p]) => score >= p * MAX[mode])[1];
+const titleFor = (score, mode) => TITLES.find(([p]) => score >= p * maxScore(mode))[1];
 
 /* ---------- storage ---------- */
 const store = {
@@ -158,7 +158,7 @@ function gradeExplain(input, q) {
 const parseNum = s => { const m = String(s).replace(/,/g, '.').replace(/\s/g, '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
 
 /* ---------- state ---------- */
-const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), set: store.get('set', 'sci-g8s1'), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
+const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), set: store.get('set', 'sci-g8s1'), pqTopic: store.get('pqTopic', ''), pqLevel: store.get('pqLevel', ''), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
 let lbScope = S.mode, lbMode = 'game';
 
 /* ---------- sets (subject / grade / semester collections) ---------- */
@@ -169,12 +169,27 @@ const setTopics = () => setById(S.set).topics;
 const setQuestions = () => QUESTIONS.filter(q => (q.set || 'sci-g8s1') === S.set);
 const setWords = () => { const ids = new Set(setTopics().map(t => t.id)); return WORDS.filter(w => ids.has(w[1])); };
 function setSet(id) { if (!SETS[id]) return; S.set = id; store.set('set', id); }
+const setTag = () => { const s = setById(S.set); return s.name + (s.grade ? ' · Gr ' + s.grade : '') + (s.semester ? ' · Sem ' + s.semester : ''); };
+const maxScore = mode => mode === 'game' ? setTopics().length * 1600 : MAX[mode];
 
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('active', s.id === id)); window.scrollTo(0, 0); if (id === 'scr-landing' || id === 'scr-welcome') musicStart(); }
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
 
+/* ---------- confirm dialog ---------- */
+let cfResolve = null;
+function askConfirm(msg, yesText = 'Yes', danger = false) {
+  return new Promise(res => {
+    $('#cf-msg').textContent = msg;
+    $('#cf-ico').textContent = danger ? '⚠️' : '❓';
+    const y = $('#cf-yes'); y.textContent = yesText; y.className = 'btn ' + (danger ? 'red' : 'gold');
+    $('#confirm-modal').hidden = false;
+    cfResolve = res;
+  });
+}
+function cfDone(v) { if (!cfResolve) return; $('#confirm-modal').hidden = true; const r = cfResolve; cfResolve = null; r(v); }
+
 /* ---------- leaderboard ---------- */
-const lbKey = mode => mode === 'daily' ? 'daily_' + manilaDay() : mode;
+const lbKey = mode => S.set + '|' + (mode === 'daily' ? 'daily_' + manilaDay() : mode);
 const localLB = mode => store.get('lb_' + lbKey(mode), []);
 function saveLocal(mode, entry) {
   const list = localLB(mode), key = entry.name.toLowerCase();
@@ -279,6 +294,20 @@ function initWelcome() {
   $$('#lb-scope button').forEach(b => b.onclick = () => { lbScope = b.dataset.scope; syncTabs(); loadLB(); });
   $$('#lb-mode button').forEach(b => b.onclick = () => { lbMode = b.dataset.lbmode; syncTabs(); loadLB(); });
   syncTabs();
+  const setSel = $('#set-sel');
+  const drawPickers = () => {
+    setSel.innerHTML = setList().map(s => `<option value="${s.id}">${esc(s.label)}</option>`).join('');
+    setSel.value = S.set;
+    const tp = $('#pq-topic');
+    tp.innerHTML = '<option value="">All topics</option>' + setTopics().map(t => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('');
+    if (S.pqTopic && !setTopics().some(t => t.id === S.pqTopic)) { S.pqTopic = ''; store.set('pqTopic', ''); }
+    tp.value = S.pqTopic;
+    $('#pq-level').value = S.pqLevel;
+  };
+  setSel.onchange = () => { setSet(setSel.value); drawPickers(); refreshWelcome(); loadLB(); };
+  $('#pq-topic').onchange = e => { S.pqTopic = e.target.value; store.set('pqTopic', S.pqTopic); };
+  $('#pq-level').onchange = e => { S.pqLevel = e.target.value; store.set('pqLevel', S.pqLevel); };
+  drawPickers();
   const need = () => {
     const n = $('#name').value.replace(/\s+/g, ' ').trim();
     if (n.length < 2) { $('#name-err').textContent = 'Please enter your name (at least 2 characters) to play.'; $('#name').focus(); $('#name').classList.add('shake'); setTimeout(() => $('#name').classList.remove('shake'), 400); return false; }
@@ -303,18 +332,18 @@ function dailyQueue(day) {
   const topics = seededShuffle(setTopics().map(t => t.id), rnd);
   return TIERS.map((tier, i) => { const list = setQuestions().filter(q => q.topic === topics[i] && q.tier === tier); return { q: list[rnd() * list.length | 0], tier, done: false }; });
 }
-function startGame(kind) {
+async function startGame(kind) {
   if (kind === 'word') return startPuzzle();
   let replay = false;
   if (kind === 'daily') {
     replay = store.get('daily', {}).last === manilaDay();
-    if (replay && !confirm("You've already played today's Daily Challenge. Replay it for practice? (This score won't be recorded.)")) return;
+    if (replay && !(await askConfirm("You've already played today's Daily Challenge. Replay it for practice? (This score won't be recorded.)", 'Replay'))) return;
   }
   S.kind = kind; S.score = 0; S.log = []; S.start = Date.now(); S.practice = false;
   S.streak = 0; S.bestStreak = 0; S.life = { fifty: 1, hint: 1, time: 1 }; S.lifeUsed = 0; S.wager = null; S.review = null;
   S.day = manilaDay(); S.dailyReplay = replay;
   $('#hud-name').innerHTML = Avatar.html(S.avatar) + ' ' + esc(S.name);
-  $('#hud-mode').textContent = (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge') + ' · ' + KIND_NAME[kind] + (replay ? ' (practice)' : '');
+  $('#hud-mode').textContent = (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge') + ' · ' + KIND_NAME[kind] + ' · ' + setTag() + (replay ? ' (practice)' : '');
   updateScore(false);
   const used = new Set();
   if (kind === 'game') {
@@ -324,7 +353,7 @@ function startGame(kind) {
     renderBoard();
     $('#board').hidden = false;
   } else {
-    S.queue = kind === 'daily' ? dailyQueue(S.day) : shuffle(TIERS.flatMap(tier => shuffle(setQuestions().filter(q => q.tier === tier)).slice(0, 2).map(q => ({ q, tier, done: false }))));
+    S.queue = kind === 'daily' ? dailyQueue(S.day) : shuffle(TIERS.flatMap(tier => shuffle(setQuestions().filter(q => q.tier === tier && (!S.pqTopic || q.topic === S.pqTopic) && (!S.pqLevel || q.level === +S.pqLevel))).slice(0, 2).map(q => ({ q, tier, done: false }))));
     S.qi = 0;
     renderPop();
   }
@@ -341,6 +370,7 @@ function updateScore(bump = true) {
   sk.textContent = '🔥 ' + S.streak + (S.streak >= 5 ? ' · +25%' : S.streak >= 3 ? ' · +10%' : '');
 }
 function renderBoard() {
+  $('#board').style.gridTemplateColumns = matchMedia('(max-width:760px)').matches ? '' : `repeat(${setTopics().length},minmax(0,1fr))`;
   $('#board').innerHTML = setTopics().map((t, ti) => `<div class="col"><div class="col-h"><span class="ic">${t.icon}</span>${t.name}</div>
     ${S.board[ti].map((c, i) => `<div class="tile ${c.done ? 'done ' + (c.earned > 0 ? 'ok' : 'bad') : ''}"><button data-t="${ti}" data-i="${i}" ${c.done ? 'disabled' : ''} aria-label="${t.name} for ${c.tier} dollars">
       ${c.done ? (c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier) + `<small>${TYPE_NAME[c.q.type]}</small>`}</button></div>`).join('')}</div>`).join('');
@@ -348,6 +378,7 @@ function renderBoard() {
 }
 
 function renderPop() {
+  $('#board').style.gridTemplateColumns = '';
   const head = S.kind === 'daily' ? `<h2>📅 Daily Challenge</h2><p>${S.day} · 5 questions · the same for everyone today</p>` : '<h2>⏱️ Pop Quiz</h2><p>10 random questions · 2 from every value tier</p>';
   $('#board').innerHTML = `<div class="pop">${head}<div class="pop-steps">${S.queue.map((c, i) =>
     `<div class="ps ${c.done ? (c.earned > 0 ? 'ok' : 'bad') : i === S.qi ? 'cur' : ''}"><b>${i + 1}</b><span>${c.done ? (c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier)}</span></div>`).join('')}</div>
@@ -355,6 +386,7 @@ function renderPop() {
   const r = $('#pop-resume'); if (r) r.onclick = () => openCard(S.queue[S.qi]);
 }
 function renderWager() {
+  $('#board').style.gridTemplateColumns = '';
   const used = new Set(S.board.flat().map(c => c.q.id));
   const q = shuffle(setQuestions().filter(x => x.tier === 500 && !used.has(x.id)))[0];
   if (!q) return endGame();
@@ -386,6 +418,7 @@ function startReview(ids) {
   setTimeout(() => openCard({ q: setQuestions().find(q => q.id === S.review.queue[0]), tier: 0 }, true), 250);
 }
 function drawReview() {
+  $('#board').style.gridTemplateColumns = '';
   const R = S.review;
   $('#board').innerHTML = `<div class="pop"><h2>🔁 Review my misses</h2><p>Get each one right to master it. Missed ones come back at the end.</p>
     <div class="review-bar"><i style="width:${R.mastered / R.total * 100}%"></i></div><p><b>${R.mastered}</b> of <b>${R.total}</b> mastered</p>
@@ -403,9 +436,9 @@ function reviewNext() {
   setTimeout(() => openCard({ q: setQuestions().find(q => q.id === R.queue[0]), tier: 0 }, true), 200);
 }
 function endReview() { stopTimer(); $('#modal').hidden = true; S.card = null; S.review = null; $('#btn-home').click(); }
-function quitGame() {
+async function quitGame() {
   if (S.review) return endReview();
-  if (S.log.length && !confirm(`Quit to Home? This game (${money(S.score)}) will NOT be recorded. Use Finish to record your score.`)) return;
+  if (S.log.length && !(await askConfirm(`Quit to Home? This game (${money(S.score)}) will NOT be recorded. Use Finish to record your score.`, 'Quit', true))) return;
   stopTimer(); $('#modal').hidden = true; S.card = null; S.log = [];
   $('#btn-home').click();
 }
@@ -637,9 +670,9 @@ function wrong(reason) {
   renderValue();
   startTimer();
 }
-function forfeit() {
+async function forfeit() {
   const c = S.card; if (!c || c.over) return;
-  if (!S.practice && !confirm('Forfeit this card? You get $0 and the answer is shown.')) return;
+  if (!S.practice && !(await askConfirm('Forfeit this card? You get $0 and the answer is shown.', 'Forfeit', true))) return;
   stopTimer(); c.over = true; c.last = null;
   sfx.bad();
   finishCard(0, `<h4>🏳️ ${S.practice ? 'Answer' : 'Forfeited — $0'}</h4>${explainExtra(false)}`, S.practice ? 'reveal' : 'bad');
@@ -736,7 +769,7 @@ async function endGame() {
   $('#btn-practice').textContent = `🔁 Practice my misses (${S.lastMisses.length})`;
   S.res = { score: S.score, correct, total, ms, badges: earnedB, title: titleFor(S.score, S.kind), kind: S.kind };
   $('#btn-share').hidden = !total;
-  $('#res-kind').textContent = KIND_NAME[S.kind] + ' · ' + (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge');
+  $('#res-kind').textContent = KIND_NAME[S.kind] + ' · ' + setTag() + ' · ' + (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge');
   $('#res-title').textContent = (correct / Math.max(total, 1) >= 0.7 ? 'Outstanding, ' : 'Nice effort, ') + S.name + '!';
   $('#res-score').textContent = money(S.score);
   $('#res-badge').textContent = '🎖️ ' + titleFor(S.score, S.kind);
@@ -774,7 +807,7 @@ async function shareCard() {
   const T = (txt, y, font, col) => { g.font = font; g.fillStyle = col; g.fillText(txt, 540, y); };
   g.textAlign = 'center';
   T('🧠 Brain Bank', 135, '700 66px Fredoka, sans-serif', '#1f5c51');
-  T('The Science Showdown · ' + KIND_NAME[r.kind], 225, '700 36px Nunito, sans-serif', '#667');
+  T(setTag() + ' · ' + KIND_NAME[r.kind], 225, '700 36px Nunito, sans-serif', '#667');
   const avImg = await Avatar.image(S.avatar); if (avImg) g.drawImage(avImg, 455, 250, 170, 170);
   T(S.name, 475, '700 62px Fredoka, sans-serif', '#223');
   T(money(r.score), 630, '700 150px Fredoka, sans-serif', '#d89a00');
@@ -894,7 +927,7 @@ function startPuzzle() {
     cell.el.onkeydown = e => wpKeys(cell, e);
   }
   $('#hud-name-w').innerHTML = Avatar.html(S.avatar) + ' ' + esc(S.name);
-  $('#hud-mode-w').textContent = (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge') + ' · Word Puzzle';
+  $('#hud-mode-w').textContent = (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge') + ' · Word Puzzle · ' + setTag();
   $('#wp-fb').innerHTML = ''; wpClues(); wpUpdate(false);
   show('scr-word'); musicStart(); livePing(false);
   setTimeout(() => { const first = WP.words.slice().sort((a, b) => a.n - b.n)[0]; WP.dir = first.dir; wpCells(first)[0].el.focus(); }, 200);
@@ -987,9 +1020,9 @@ function wpRevealLetter() {
   wpClues(); wpHighlight();
   const nx = cs.find(x => !x.el.value); if (nx) nx.el.focus();
 }
-function wpGiveUp() {
+async function wpGiveUp() {
   const wd = wpActive(); if (!wd || wd.status !== 'open') return;
-  if (!confirm(`Give up ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'}? It will score $0 and the answer will be shown.`)) return;
+  if (!(await askConfirm(`Give up ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'}? It will score $0 and the answer will be shown.`, 'Give up', true))) return;
   wd.value = 0; wpResolve(wd, false, 'gave up');
 }
 
@@ -1004,6 +1037,10 @@ function init() {
   $('#coffee').onclick = () => { $('#coffee-modal').hidden = false; };
   $('#coffee-close').onclick = () => { $('#coffee-modal').hidden = true; };
   $('#coffee-modal').onclick = e => { if (e.target.id === 'coffee-modal') $('#coffee-modal').hidden = true; };
+  $('#cf-no').onclick = () => cfDone(false);
+  $('#cf-yes').onclick = () => cfDone(true);
+  $('#confirm-modal').onclick = e => { if (e.target.id === 'confirm-modal') cfDone(false); };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#confirm-modal').hidden) cfDone(false); });
   $('#c-img').onclick = () => { $('#zoom img').src = $('#c-img').src; $('#zoom').hidden = false; };
   document.addEventListener('click', e => { if (e.target.matches('.bq img, .feedback img')) { $('#zoom img').src = e.target.src; $('#zoom').hidden = false; } });
   $('#zoom').onclick = () => $('#zoom').hidden = true;
@@ -1019,7 +1056,7 @@ function init() {
   const musicKick = () => { if (musicOn) musicStart(); };
   document.addEventListener('pointerdown', musicKick);
   document.addEventListener('keydown', musicKick);
-  $('#wp-finish').onclick = () => { const left = WP.words.filter(w => w.status === 'open').length; if (left && !confirm(`Finish now and record ${money(S.score)}? ${left} word(s) will be left unsolved.`)) return; endGame(); };
+  $('#wp-finish').onclick = async () => { const left = WP.words.filter(w => w.status === 'open').length; if (left && !(await askConfirm(`Finish now and record ${money(S.score)}? ${left} word(s) will be left unsolved.`, 'Finish'))) return; endGame(); };
   $('#btn-start').onclick = () => { show('scr-welcome'); tone([523, 659, 784], 0.1, 'triangle', 0.06); };
   $$('.land-mode').forEach(b => b.onclick = () => $('#btn-start').click());
   $('#to-landing').onclick = () => show('scr-landing');
@@ -1028,12 +1065,13 @@ function init() {
   document.addEventListener('visibilitychange', () => { if (document.hidden) musicStop(); else if (musicOn && !S.review && !$('#scr-results').classList.contains('active')) musicStart(); });
   $('#btn-mute').textContent = muted ? '🔇' : '🔊';
   $('#btn-mute').onclick = () => { muted = !muted; store.set('muted', muted); $('#btn-mute').textContent = muted ? '🔇' : '🔊'; };
-  $('#btn-finish').onclick = () => {
+  $('#btn-finish').onclick = async () => {
     if (S.review) return endReview();
     const left = S.kind === 'game' ? S.board.flat().filter(c => !c.done).length : S.queue.length - S.qi;
-    if (left && !confirm(`Finish now and record ${money(S.score)}? ${left} card(s) will be left unplayed.`)) return;
+    if (left && !(await askConfirm(`Finish now and record ${money(S.score)}? ${left} card(s) will be left unplayed.`, 'Finish'))) return;
     endGame();
   };
+  addEventListener('resize', () => { if (S.kind === 'game' && !S.review && $('#scr-board').classList.contains('active')) renderBoard(); });
   $('#btn-again').onclick = () => startGame(S.kind);
   $('#btn-home').onclick = () => { musicStop(); S.review = null; refreshWelcome(); show('scr-welcome'); lbScope = S.mode; lbMode = S.kind; $$('#lb-scope button').forEach(b => b.classList.toggle('on', b.dataset.scope === lbScope)); $$('#lb-mode button').forEach(b => b.classList.toggle('on', b.dataset.lbmode === lbMode)); loadLB(); };
   $('#bank-back').onclick = () => show('scr-welcome');
