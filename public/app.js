@@ -84,7 +84,7 @@ function musicStart() {
   }, 200);
 }
 function musicStop() { clearInterval(musicId); musicId = null; }
-const syncMusicBtn = () => { const b = $('#btn-music'); b.classList.toggle('off', !musicOn); b.title = musicOn ? 'Music on' : 'Music off'; };
+const syncMusicBtn = () => { ['#btn-music', '#music-fab'].forEach(s => { const b = $(s); if (!b) return; b.classList.toggle('off', !musicOn); b.title = musicOn ? 'Music on' : 'Music off'; }); };
 
 /* ---------- confetti ---------- */
 function confetti(n = 60) {
@@ -161,7 +161,7 @@ const parseNum = s => { const m = String(s).replace(/,/g, '.').replace(/\s/g, ''
 const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
 let lbScope = S.mode, lbMode = 'game';
 
-function show(id) { $$('.screen').forEach(s => s.classList.toggle('active', s.id === id)); window.scrollTo(0, 0); }
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('active', s.id === id)); window.scrollTo(0, 0); if (id === 'scr-landing' || id === 'scr-welcome') musicStart(); }
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
 
 /* ---------- leaderboard ---------- */
@@ -1006,13 +1006,17 @@ function init() {
   $('#wp-give').onclick = wpGiveUp;
   $('#wp-home').onclick = quitGame;
   $('#wp-music').onclick = () => $('#btn-music').click();
+  $('#music-fab').onclick = () => $('#btn-music').click();
+  const musicKick = () => { if (musicOn) musicStart(); };
+  document.addEventListener('pointerdown', musicKick);
+  document.addEventListener('keydown', musicKick);
   $('#wp-finish').onclick = () => { const left = WP.words.filter(w => w.status === 'open').length; if (left && !confirm(`Finish now and record ${money(S.score)}? ${left} word(s) will be left unsolved.`)) return; endGame(); };
   $('#btn-start').onclick = () => { show('scr-welcome'); tone([523, 659, 784], 0.1, 'triangle', 0.06); };
   $$('.land-mode').forEach(b => b.onclick = () => $('#btn-start').click());
   $('#to-landing').onclick = () => show('scr-landing');
   $('#land-avs').innerHTML = Array.from({ length: 4 }, (_, i) => `<div class="fav f${i}">${Avatar.svg(Avatar.random())}</div>`).join('');
   $('#btn-practice').onclick = () => startReview(S.lastMisses);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) musicStop(); else if (($('#scr-board').classList.contains('active') || $('#scr-word').classList.contains('active')) && !S.review) musicStart(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) musicStop(); else if (musicOn && !S.review && !$('#scr-results').classList.contains('active')) musicStart(); });
   $('#btn-mute').textContent = muted ? '🔇' : '🔊';
   $('#btn-mute').onclick = () => { muted = !muted; store.set('muted', muted); $('#btn-mute').textContent = muted ? '🔇' : '🔊'; };
   $('#btn-finish').onclick = () => {
