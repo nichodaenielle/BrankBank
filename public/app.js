@@ -4,9 +4,9 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const TIERS = [100, 200, 300, 400, 500];
 const TIME = { 100: 20, 200: 30, 300: 60, 400: 90, 500: 150 };
-const TYPE_NAME = { tf: 'True / False', mc: 'Multiple choice', short: 'Identification', multi: 'Select all', label: 'Diagram labeling', blanks: 'Fill in / Solve', order: 'Sequence', explain: 'Explain' };
-const MAX = { game: 8000, pop: 3000, daily: 1500 };
-const KIND_NAME = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily Challenge' };
+const TYPE_NAME = { tf: 'True / False', mc: 'Multiple choice', short: 'Identification', multi: 'Select all', label: 'Diagram labeling', blanks: 'Fill in / Solve', order: 'Sequence', explain: 'Explain', word: 'Crossword' };
+const MAX = { game: 8000, pop: 3000, daily: 1500, word: 3000 };
+const KIND_NAME = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily Challenge', word: 'Word Puzzle' };
 const BADGES = {
   sharp: ['🎯', 'Sharpshooter', '10+ cards, all correct on the first try'],
   fire: ['🔥', 'On Fire', '5 correct cards in a row'],
@@ -279,6 +279,7 @@ function initWelcome() {
   $('#btn-game').onclick = () => need() && startGame('game');
   $('#btn-pop').onclick = () => need() && startGame('pop');
   $('#btn-daily').onclick = () => need() && startGame('daily');
+  $('#btn-word').onclick = () => need() && startGame('word');
   $('#btn-bank').onclick = () => openBank();
   $('#btn-review').onclick = () => startReview(store.get('misses', []));
   refreshWelcome();
@@ -294,6 +295,7 @@ function dailyQueue(day) {
   return TIERS.map((tier, i) => { const list = QUESTIONS.filter(q => q.topic === topics[i] && q.tier === tier); return { q: list[rnd() * list.length | 0], tier, done: false }; });
 }
 function startGame(kind) {
+  if (kind === 'word') return startPuzzle();
   let replay = false;
   if (kind === 'daily') {
     replay = store.get('daily', {}).last === manilaDay();
@@ -643,6 +645,7 @@ function answerHTML(q) {
     case 'blanks': return q.fields.map(f => `${esc(f.label)}: <b>${esc(f.kind === 'num' ? f.value + ' ' + (f.unit || '') : f.kind === 'select' ? f.answer : f.a)}</b>`).join('<br>');
     case 'order': return q.steps.map((s, i) => `${i + 1}. ${esc(s)}`).join('<br>');
     case 'explain': return esc(q.model);
+    case 'word': return `<b>${esc(q.word)}</b>`;
   }
 }
 const answerText = q => answerHTML(q).replace(/<br>/g, '\n').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
@@ -719,7 +722,7 @@ async function endGame() {
   earnedB.forEach(b => have.add(b)); store.set('badges', [...have]);
   $('#res-badges').innerHTML = earnedB.map(id => `<div class="bdg ${fresh.includes(id) ? 'new' : ''}"><span>${BADGES[id][0]}</span><b>${BADGES[id][1]}</b><small>${fresh.includes(id) ? 'NEW! ' : ''}${BADGES[id][2]}</small></div>`).join('');
   if (fresh.length || (total && correct / total >= 0.7)) setTimeout(() => confetti(200), 300);
-  S.lastMisses = S.log.filter(l => !l.ok).map(l => l.q.id);
+  S.lastMisses = S.log.filter(l => !l.ok && !l.q.word).map(l => l.q.id);
   $('#btn-practice').hidden = !S.lastMisses.length;
   $('#btn-practice').textContent = `🔁 Practice my misses (${S.lastMisses.length})`;
   S.res = { score: S.score, correct, total, ms, badges: earnedB, title: titleFor(S.score, S.kind), kind: S.kind };
@@ -805,6 +808,182 @@ function drawBank() {
   });
 }
 
+/* ---------- word puzzle (crossword) ---------- */
+const WP = { words: [], cells: new Map(), cur: null, dir: 'a' };
+const wpKey = (r, c) => r + ',' + c;
+function buildCrossword(vocab, want = 10, maxW = 13, maxH = 13) {
+  let best = null;
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const list = shuffle(vocab).slice(0, 30).sort((a, b) => b[0].length - a[0].length + (Math.random() - 0.5) * 6);
+    const grid = new Map(), placed = [];
+    let b = { r0: 0, r1: 0, c0: 0, c1: 0 };
+    const get = (r, c) => grid.get(wpKey(r, c));
+    const fits = (w, r, c, dir) => {
+      const dr = dir === 'd' ? 1 : 0, dc = 1 - dr; let cross = 0;
+      if (get(r - dr, c - dc) || get(r + dr * w.length, c + dc * w.length)) return -1;
+      const nb = { r0: Math.min(b.r0, r), r1: Math.max(b.r1, r + dr * (w.length - 1)), c0: Math.min(b.c0, c), c1: Math.max(b.c1, c + dc * (w.length - 1)) };
+      if (placed.length && (nb.c1 - nb.c0 + 1 > maxW || nb.r1 - nb.r0 + 1 > maxH)) return -1;
+      for (let i = 0; i < w.length; i++) {
+        const rr = r + dr * i, cc = c + dc * i, g = get(rr, cc);
+        if (g) { if (g.ch !== w[i] || g[dir] != null) return -1; cross++; }
+        else if (get(rr + dc, cc + dr) || get(rr - dc, cc - dr)) return -1;
+      }
+      return cross;
+    };
+    const put = (item, r, c, dir) => {
+      const w = item[0], dr = dir === 'd' ? 1 : 0, dc = 1 - dr, idx = placed.length;
+      for (let i = 0; i < w.length; i++) { const k = wpKey(r + dr * i, c + dc * i); const g = grid.get(k) || { ch: w[i] }; g[dir] = idx; grid.set(k, g); }
+      b = { r0: Math.min(b.r0, r), r1: Math.max(b.r1, r + dr * (w.length - 1)), c0: Math.min(b.c0, c), c1: Math.max(b.c1, c + dc * (w.length - 1)) };
+      placed.push({ w, topic: item[1], clue: item[2], r, c, dir });
+    };
+    for (const item of list) {
+      if (placed.length >= want) break;
+      const w = item[0];
+      if (!placed.length) { if (w.length <= maxW) put(item, 0, 0, 'a'); continue; }
+      let opts = [];
+      for (const [k, g] of grid) {
+        const [r, c] = k.split(',').map(Number);
+        for (let i = 0; i < w.length; i++) if (w[i] === g.ch) for (const dir of ['a', 'd']) {
+          if (g[dir] != null) continue;
+          const sr = dir === 'd' ? r - i : r, sc = dir === 'a' ? c - i : c, x = fits(w, sr, sc, dir);
+          if (x > 0) opts.push([x + Math.random(), sr, sc, dir]);
+        }
+      }
+      if (opts.length) { opts.sort((a, z) => z[0] - a[0]); put(item, opts[0][1], opts[0][2], opts[0][3]); }
+    }
+    const score = placed.length * 1000 - (b.r1 - b.r0 + 1) * (b.c1 - b.c0 + 1) + new Set(placed.map(p => p.topic)).size * 30;
+    if (!best || score > best.score) best = { score, placed, b };
+    if (placed.length >= want && attempt > 20) break;
+  }
+  const { placed, b } = best;
+  placed.forEach(p => { p.r -= b.r0; p.c -= b.c0; });
+  const starts = [...new Set(placed.map(p => wpKey(p.r, p.c)))].map(k => k.split(',').map(Number)).sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  placed.forEach(p => { p.n = starts.findIndex(([r, c]) => r === p.r && c === p.c) + 1; });
+  return { words: placed, rows: b.r1 - b.r0 + 1, cols: b.c1 - b.c0 + 1 };
+}
+const wordValue = w => Math.min(500, Math.round((100 + 30 * (w.length - 3)) / 10) * 10);
+const wpCells = wd => [...wd.w].map((_, i) => WP.cells.get(wpKey(wd.r + (wd.dir === 'd' ? i : 0), wd.c + (wd.dir === 'a' ? i : 0))));
+function startPuzzle() {
+  S.kind = 'word'; S.score = 0; S.log = []; S.start = Date.now(); S.practice = false; S.streak = 0; S.bestStreak = 0; S.lifeUsed = 0; S.wager = null; S.review = null; S.card = null;
+  const cw = buildCrossword(WORDS);
+  WP.words = cw.words.map(p => ({ ...p, base: wordValue(p.w), value: wordValue(p.w), tries: 0, status: 'open' }));
+  WP.cells = new Map(); WP.last = Date.now(); WP.cur = null;
+  WP.words.forEach((wd, idx) => [...wd.w].forEach((ch, i) => {
+    const r = wd.r + (wd.dir === 'd' ? i : 0), c = wd.c + (wd.dir === 'a' ? i : 0), k = wpKey(r, c);
+    const cell = WP.cells.get(k) || { r, c, ch, w: {} }; cell.w[wd.dir] = idx; WP.cells.set(k, cell);
+  }));
+  const g = $('#wp-grid'); g.style.setProperty('--cols', cw.cols); g.style.setProperty('--rows', cw.rows); g.innerHTML = '';
+  for (let r = 0; r < cw.rows; r++) for (let c = 0; c < cw.cols; c++) {
+    const cell = WP.cells.get(wpKey(r, c)), d = document.createElement('div');
+    if (!cell) { d.className = 'wc blank'; g.appendChild(d); continue; }
+    const num = WP.words.find(w => w.r === r && w.c === c);
+    d.className = 'wc'; d.innerHTML = (num ? `<span class="wn">${num.n}</span>` : '') + `<input maxlength="2" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="row ${r + 1} column ${c + 1}">`;
+    cell.box = d; cell.el = d.querySelector('input'); g.appendChild(d);
+    cell.el.onfocus = () => wpFocus(cell);
+    cell.el.onclick = () => { if (WP.cur === cell && cell.w.a != null && cell.w.d != null) { WP.dir = WP.dir === 'a' ? 'd' : 'a'; wpHighlight(); } };
+    cell.el.oninput = () => wpType(cell);
+    cell.el.onkeydown = e => wpKeys(cell, e);
+  }
+  $('#hud-name-w').innerHTML = Avatar.html(S.avatar) + ' ' + esc(S.name);
+  $('#hud-mode-w').textContent = (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge') + ' · Word Puzzle';
+  $('#wp-fb').innerHTML = ''; wpClues(); wpUpdate(false);
+  show('scr-word'); musicStart(); livePing(false);
+  setTimeout(() => { const first = WP.words.slice().sort((a, b) => a.n - b.n)[0]; WP.dir = first.dir; wpCells(first)[0].el.focus(); }, 200);
+}
+function wpActive() { const c = WP.cur; if (!c) return null; const i = c.w[WP.dir] ?? c.w[WP.dir === 'a' ? 'd' : 'a']; return WP.words[i]; }
+function wpFocus(cell) { if (cell.w[WP.dir] == null) WP.dir = WP.dir === 'a' ? 'd' : 'a'; WP.cur = cell; wpHighlight(); }
+function wpHighlight() {
+  const wd = wpActive();
+  WP.cells.forEach(c => c.box.classList.remove('hl', 'cur'));
+  if (!wd) return;
+  WP.dir = wd.dir; wpCells(wd).forEach(c => c.box.classList.add('hl')); WP.cur.box.classList.add('cur');
+  $$('.wp-clues li').forEach(li => li.classList.toggle('on', +li.dataset.i === WP.words.indexOf(wd)));
+  $('#wp-clue').innerHTML = `<b>${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'}</b> <span class="wl">${wd.w.length} letters · ${wd.status === 'open' ? money(wd.value) : wd.status === 'ok' ? '✅ solved' : '❌ revealed'}</span><div>${topicIcon(wd.topic)} ${esc(wd.clue)}</div>`;
+  $('#wp-reveal').disabled = $('#wp-give').disabled = wd.status !== 'open';
+}
+function wpMove(cell, step) {
+  const wd = wpActive(); if (!wd) return;
+  const cs = wpCells(wd); let i = cs.indexOf(cell) + step;
+  while (cs[i] && cs[i].locked && step > 0) i += step;
+  if (cs[i]) cs[i].el.focus();
+  else if (step > 0) { const nx = WP.words.filter(w => w.status === 'open' && w !== wd).sort((a, b) => a.n - b.n)[0]; if (nx) { WP.dir = nx.dir; (wpCells(nx).find(c => !c.el.value) || wpCells(nx)[0]).el.focus(); } }
+}
+function wpType(cell) {
+  if (cell.locked) { cell.el.value = cell.ch; return; }
+  const v = cell.el.value.toUpperCase().replace(/[^A-Z]/g, ''); cell.el.value = v.slice(-1);
+  if (!cell.el.value) return;
+  const before = WP.words.filter(w => w.status === 'open');
+  Object.values(cell.w).forEach(i => wpCheck(WP.words[i]));
+  if (before.length === WP.words.filter(w => w.status === 'open').length || WP.words[cell.w[WP.dir]]?.status === 'open') wpMove(cell, 1);
+  else wpMove(cell, 1);
+}
+function wpKeys(cell, e) {
+  const mv = { ArrowRight: [0, 1, 'a'], ArrowLeft: [0, -1, 'a'], ArrowDown: [1, 0, 'd'], ArrowUp: [-1, 0, 'd'] }[e.key];
+  if (mv) { e.preventDefault(); WP.dir = mv[2]; const n = WP.cells.get(wpKey(cell.r + mv[0], cell.c + mv[1])); if (n) n.el.focus(); else wpHighlight(); return; }
+  if (e.key === 'Backspace' && !cell.el.value) { e.preventDefault(); const wd = wpActive(), cs = wpCells(wd), p = cs[cs.indexOf(cell) - 1]; if (p) { p.el.focus(); if (!p.locked) p.el.value = ''; } }
+  if (e.key === 'Enter') { e.preventDefault(); wpMove(cell, 99); }
+}
+function wpCheck(wd) {
+  if (wd.status !== 'open') return;
+  const cs = wpCells(wd), guess = cs.map(c => c.el.value).join('');
+  if (guess.length < wd.w.length) return;
+  if (guess === wd.w) return wpResolve(wd, true);
+  wd.tries++; sfx.bad();
+  cs.forEach(c => { c.box.classList.remove('shake', 'wrong'); void c.box.offsetWidth; c.box.classList.add('shake', 'wrong'); setTimeout(() => c.box.classList.remove('wrong'), 900); });
+  if (wd.tries >= 3) { wd.value = 0; return wpResolve(wd, false, '3 wrong tries'); }
+  wd.value = Math.round(wd.value / 2);
+  setTimeout(() => { cs.forEach(c => { if (!c.locked) c.el.value = ''; }); (cs.find(c => !c.locked) || cs[0]).el.focus(); }, 450);
+  wpFeedback(`❌ ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'} is not right. Now worth ${money(wd.value)} · try ${wd.tries + 1} of 3`, 'bad');
+  wpHighlight(); livePing(false);
+}
+function wpResolve(wd, solved, why) {
+  const cs = wpCells(wd), now = Date.now();
+  let earned = solved ? wd.value : 0, extra = '';
+  if (earned > 0) {
+    S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
+    const pct = S.streak >= 5 ? 25 : S.streak >= 3 ? 10 : 0;
+    if (pct) { const b = Math.round(earned * pct / 100); earned += b; extra = ` · 🔥 ${S.streak} in a row +${pct}%`; }
+    sfx.ok(); confetti(S.streak >= 5 ? 120 : 40);
+  } else S.streak = 0;
+  wd.status = earned > 0 ? 'ok' : 'bad'; wd.earned = earned;
+  cs.forEach(c => { c.el.value = c.ch; c.locked = true; c.el.readOnly = true; c.box.classList.add(wd.status === 'ok' ? 'ok' : 'bad'); if (wd.status === 'ok') c.box.classList.remove('bad'); });
+  S.score += earned;
+  S.log.push({ q: { id: 'w-' + wd.w, topic: wd.topic, q: wd.clue, type: 'word', word: wd.w }, earned, tier: wd.base, ok: earned > 0, tries: wd.tries + (earned > 0 ? 1 : 0), ms: now - WP.last });
+  WP.last = now;
+  wpFeedback(earned > 0 ? `✅ ${wd.w}! +${money(earned)}${extra}` : `❌ The answer is <b>${wd.w}</b> (${why}) · $0`, earned > 0 ? 'ok' : 'bad');
+  wpClues(); wpUpdate(earned > 0); wpHighlight(); livePing(false);
+  if (WP.words.every(w => w.status !== 'open')) setTimeout(endGame, 1400);
+}
+function wpFeedback(html, cls) { const f = $('#wp-fb'); f.className = 'wp-fb ' + cls; f.innerHTML = html; }
+function wpUpdate(bump) {
+  const b = $('#hud-score-w'); b.textContent = money(S.score);
+  if (bump) { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+  const left = WP.words.filter(w => w.status === 'open').length;
+  $('#hud-left-w').textContent = left + ' words left';
+  const sk = $('#hud-streak-w'); sk.hidden = S.streak < 2; sk.textContent = '🔥 ' + S.streak + (S.streak >= 5 ? ' · +25%' : S.streak >= 3 ? ' · +10%' : '');
+}
+function wpClues() {
+  const li = wd => { const i = WP.words.indexOf(wd); return `<li data-i="${i}" class="${wd.status}"><b>${wd.n}</b><span>${esc(wd.clue)} <small>(${wd.w.length})</small></span><em>${wd.status === 'open' ? money(wd.value) : wd.status === 'ok' ? '+' + money(wd.earned) : '$0'}</em></li>`; };
+  const by = d => WP.words.filter(w => w.dir === d).sort((a, b) => a.n - b.n).map(li).join('');
+  $('#wp-across').innerHTML = by('a'); $('#wp-down').innerHTML = by('d');
+  $$('.wp-clues li').forEach(el => el.onclick = () => { const wd = WP.words[+el.dataset.i]; WP.dir = wd.dir; const cs = wpCells(wd); (cs.find(c => !c.el.value) || cs[0]).el.focus(); WP.dir = wd.dir; wpHighlight(); });
+}
+function wpRevealLetter() {
+  const wd = wpActive(); if (!wd || wd.status !== 'open') return;
+  const cs = wpCells(wd), c = cs.find(x => !x.locked && x.el.value !== x.ch); if (!c) return;
+  c.el.value = c.ch; c.locked = true; c.el.readOnly = true; c.box.classList.add('rv'); S.lifeUsed++;
+  wd.value = Math.max(0, wd.value - Math.round(wd.base * 0.15 / 10) * 10);
+  sfx.flip(); wpFeedback(`💡 Letter revealed. ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'} is now worth ${money(wd.value)}`, 'hint');
+  if (cs.every(x => x.el.value)) { if (wd.value <= 0) wpResolve(wd, false, 'all letters revealed'); else wpCheck(wd); }
+  wpClues(); wpHighlight();
+  const nx = cs.find(x => !x.el.value); if (nx) nx.el.focus();
+}
+function wpGiveUp() {
+  const wd = wpActive(); if (!wd || wd.status !== 'open') return;
+  if (!confirm(`Give up ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'}? It will score $0 and the answer will be shown.`)) return;
+  wd.value = 0; wpResolve(wd, false, 'gave up');
+}
+
 /* ---------- wiring ---------- */
 function init() {
   initWelcome();
@@ -823,8 +1002,17 @@ function init() {
   $('#btn-music').onclick = () => { musicOn = !musicOn; store.set('music', musicOn); syncMusicBtn(); musicOn ? musicStart() : musicStop(); };
   $$('#c-life .life').forEach(b => b.onclick = () => useLife(b.dataset.life));
   $('#btn-share').onclick = shareCard;
+  $('#wp-reveal').onclick = wpRevealLetter;
+  $('#wp-give').onclick = wpGiveUp;
+  $('#wp-home').onclick = quitGame;
+  $('#wp-music').onclick = () => $('#btn-music').click();
+  $('#wp-finish').onclick = () => { const left = WP.words.filter(w => w.status === 'open').length; if (left && !confirm(`Finish now and record ${money(S.score)}? ${left} word(s) will be left unsolved.`)) return; endGame(); };
+  $('#btn-start').onclick = () => { show('scr-welcome'); tone([523, 659, 784], 0.1, 'triangle', 0.06); };
+  $$('.land-mode').forEach(b => b.onclick = () => $('#btn-start').click());
+  $('#to-landing').onclick = () => show('scr-landing');
+  $('#land-avs').innerHTML = Array.from({ length: 4 }, (_, i) => `<div class="fav f${i}">${Avatar.svg(Avatar.random())}</div>`).join('');
   $('#btn-practice').onclick = () => startReview(S.lastMisses);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) musicStop(); else if ($('#scr-board').classList.contains('active') && !S.review) musicStart(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) musicStop(); else if (($('#scr-board').classList.contains('active') || $('#scr-word').classList.contains('active')) && !S.review) musicStart(); });
   $('#btn-mute').textContent = muted ? '🔇' : '🔊';
   $('#btn-mute').onclick = () => { muted = !muted; store.set('muted', muted); $('#btn-mute').textContent = muted ? '🔇' : '🔊'; };
   $('#btn-finish').onclick = () => {
@@ -843,8 +1031,8 @@ function init() {
     if (e.key === 'Enter' && !e.shiftKey && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); S.card && S.card.over ? nextCard() : submit(); }
     if (e.key === 'Enter' && e.ctrlKey && e.target.tagName === 'TEXTAREA') { e.preventDefault(); submit(); }
   });
-  window.addEventListener('beforeunload', e => { if ($('#scr-board').classList.contains('active') && S.log.length) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('beforeunload', e => { if (($('#scr-board').classList.contains('active') || $('#scr-word').classList.contains('active')) && S.log.length) { e.preventDefault(); e.returnValue = ''; } });
 }
-window.__sbq = { shortMatch, gradeExplain, norm, S, dailyQueue, manilaDay };
+window.__sbq = { shortMatch, gradeExplain, norm, S, dailyQueue, manilaDay, WP };
 init();
 })();

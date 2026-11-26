@@ -4,10 +4,13 @@ A game-show style Grade 8 Semester 1 science reviewer for Cloudflare Workers. By
 
 **Live:** https://science-bank-quiz.daenielledaypuyart.workers.dev
 
+A landing page introduces the game; Play Now leads to the name and mode screen.
+
 ## Modes
 - **Bank Board** – 5 topics × $100–$500 cards, a hidden Double Down card, and a Final Wager at the end.
 - **Pop Quiz** – 10 random timed questions (2 per value tier).
 - **Daily Challenge** – 5 questions, the same for everyone each day (Manila time), with a day streak.
+- **Word Puzzle** – a fresh 10-word science crossword every game, with its own leaderboard.
 - **Question Bank** – browse, search and try all 153 questions.
 - **Review my misses** – repeats missed questions until each is answered correctly.
 - **Live Classroom** – `/live?code=CLASS` projector screen with live class scores.

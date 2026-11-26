@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 
-const MODES = { game: 25000, pop: 6000, daily: 3000 };
+const MODES = { game: 25000, pop: 6000, daily: 3000, word: 8000 };
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 

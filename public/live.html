@@ -60,7 +60,7 @@ a{color:#ffd34d}
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = n => '$' + Math.round(n).toLocaleString();
   const medal = i => ['🥇', '🥈', '🥉'][i] || i + 1;
-  const KIND = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily' };
+  const KIND = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily', word: 'Word Puzzle' };
   let cls = (new URLSearchParams(location.search).get('code') || localStorage.getItem('sbq_live_cls') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
   let prev = {}, t1, t2;
   $('#host').textContent = location.host;
