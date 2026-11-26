@@ -338,6 +338,7 @@ function initWelcome() {
     if (S.pqTopic && !setTopics().some(t => t.id === S.pqTopic)) { S.pqTopic = ''; store.set('pqTopic', ''); }
     tp.value = S.pqTopic;
     $('#pq-level').value = S.pqLevel;
+    const sub = $('#welcome-sub'); if (sub) sub.textContent = setTag();
   };
   setSel.onchange = () => { setSet(setSel.value); drawPickers(); refreshWelcome(); loadLB(); };
   $('#pq-topic').onchange = e => { S.pqTopic = e.target.value; store.set('pqTopic', S.pqTopic); };
@@ -1073,6 +1074,7 @@ async function wpGiveUp() {
 
 /* ---------- wiring ---------- */
 function init() {
+  updateLandingStats();
   initWelcome();
   $('#c-submit').onclick = submit;
   $('#c-next').onclick = nextCard;
@@ -1130,6 +1132,13 @@ function init() {
   window.addEventListener('beforeunload', e => { if (($('#scr-board').classList.contains('active') || $('#scr-word').classList.contains('active')) && S.log.length) { e.preventDefault(); e.returnValue = ''; } });
 }
 window.__sbq = { shortMatch, gradeExplain, norm, S, dailyQueue, manilaDay, WP, SETS, setTopics, setQuestions };
+function updateLandingStats() {
+  const q = $('#st-q'), t = $('#st-t'), b = $('#st-b');
+  if (q) q.textContent = (window.QUESTIONS || []).length || '100+';
+  if (t) t.textContent = Object.values(SETS).reduce((n, s) => n + ((s.topics || []).length), 0) || '5+';
+  if (b) b.textContent = Object.keys(BADGES).length || '12';
+}
+
 async function boot() {
   try {
     const c = await getJSON('/api/content');

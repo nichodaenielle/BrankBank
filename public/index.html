@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Brain Bank · The Science Showdown</title>
-<meta name="description" content="Brain Bank: a game-show style Grade 8 science reviewer. Pick a card, bank the cash, climb the leaderboard.">
+<title>Brain Bank · The Quiz Showdown</title>
+<meta name="description" content="Brain Bank: a game-show style quiz for every subject and grade. Pick a card, bank the cash, climb the leaderboard.">
 <meta name="theme-color" content="#2f7a6b">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,13 +18,13 @@
     <div class="land">
       <div class="land-hero">
         <div class="land-text">
-          <span class="land-pill">🎮 The science review game show</span>
+          <span class="land-pill">🎮 The quiz show for every subject</span>
           <h1 class="logo">🧠 Brain <span>Bank</span></h1>
-          <p class="sub">The Science Showdown</p>
-          <p class="land-lead">Turn reviewing into a game show! Every right answer is cash in your Brain Bank. Pick cards, build streaks, crack science crosswords and race your classmates up the leaderboard.</p>
+          <p class="sub">The Quiz Showdown</p>
+          <p class="land-lead">Turn reviewing into a game show! Every right answer is cash in your Brain Bank. Pick cards, build streaks, crack themed crosswords and race your classmates up the leaderboard — across multiple question sets for different subjects and grades.</p>
           <p class="land-cheer">You already know more than you think. Play a round, learn from every miss, and walk into your exam confident. 💪</p>
           <button class="btn big gold play-now" id="btn-start">▶ Play Now</button>
-          <div class="land-stats"><div><b>153</b>questions</div><div><b>5</b>topics</div><div><b>6</b>ways to play</div><div><b>12</b>badges</div></div>
+          <div class="land-stats"><div><b id="st-q">100+</b>questions</div><div><b id="st-t">5+</b>topics</div><div><b>6</b>ways to play</div><div><b id="st-b">12</b>badges</div></div>
         </div>
         <div class="land-art">
           <img src="img/hero.webp" alt="" class="land-cell">
@@ -33,10 +33,10 @@
         </div>
       </div>
       <div class="land-modes">
-        <button class="land-mode"><span>🎲</span><b>Bank Board</b><small>Pick $100–$500 cards across 5 topics, then risk it all in the Final Wager.</small></button>
+        <button class="land-mode"><span>🎲</span><b>Bank Board</b><small>Pick $100–$500 cards across every topic in the set, then risk it all in the Final Wager.</small></button>
         <button class="land-mode"><span>⏱️</span><b>Pop Quiz</b><small>10 quick questions against the clock.</small></button>
         <button class="land-mode"><span>📅</span><b>Daily Challenge</b><small>The same 5 questions for everyone, every day. Keep your streak alive!</small></button>
-        <button class="land-mode"><span>🧩</span><b>Word Puzzle</b><small>A fresh science crossword every game.</small></button>
+        <button class="land-mode"><span>🧩</span><b>Word Puzzle</b><small>A fresh themed crossword every game.</small></button>
         <button class="land-mode"><span>🔁</span><b>Review my misses</b><small>Practise the questions you missed until you master them.</small></button>
         <button class="land-mode"><span>🏫</span><b>Class battles</b><small>Class codes, section rankings and a live projector screen.</small></button>
       </div>
@@ -50,7 +50,7 @@
         <div class="spiral"></div>
         <div class="paper">
           <h1 class="logo" id="to-landing" title="Back to the start page">🧠 Brain <span>Bank</span></h1>
-          <p class="sub">The Science Showdown</p>
+          <p class="sub" id="welcome-sub">The Quiz Showdown</p>
           <p class="tag">Pick a card. Bank the cash. Beat the board!</p>
           <img class="kids" src="img/kids.webp" alt="Students reviewing together">
           <label class="lbl" for="name">Your name</label>
@@ -75,7 +75,7 @@
             <button class="btn big gold" id="btn-game">🎲 Play Bank Board</button>
             <button class="btn big teal" id="btn-pop">⏱️ Pop Quiz</button>
           </div>
-          <div class="play-row"><button class="btn big daily" id="btn-daily">📅 Daily Challenge <small id="daily-info"></small></button><button class="btn big puzzle" id="btn-word">🧩 Word Puzzle <small>Science crossword · new every game</small></button></div>
+          <div class="play-row"><button class="btn big daily" id="btn-daily">📅 Daily Challenge <small id="daily-info"></small></button><button class="btn big puzzle" id="btn-word">🧩 Word Puzzle <small>Themed crossword · new every game</small></button></div>
           <div class="play-row two">
             <button class="btn ghost" id="btn-bank">📚 Question Bank</button>
             <button class="btn ghost" id="btn-review">🔁 Review my misses <small id="miss-count"></small></button>
@@ -116,7 +116,7 @@
               <li>💰 <b>Final Wager:</b> clear the board, then bet any part of your bank on one last $500 question.</li>
               <li>🏅 Earn <b>badges</b>, play the <b>Daily Challenge</b> every day, and practise the questions you missed.</li>
               <li>🧩 <b>Word Puzzle:</b> solve each crossword word to bank its value. A wrong word halves it; 3 wrong tries reveal it for $0. 💡 Reveal a letter for −15%.</li>
-              <li>Explanations are auto-marked by checking for the key science ideas.</li>
+              <li>Explanations are auto-marked by checking for the key ideas.</li>
             </ul>
           </details>
           <a class="live-link" href="live.html">📺 Teacher: open the Live Classroom screen</a>
