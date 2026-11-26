@@ -352,6 +352,7 @@ async function startGame(kind) {
       if (!q) return { q: null, tier, done: true, earned: 0, empty: true };
       used.add(q.id); return { q, tier, done: false };
     }));
+    if (!S.board.flat().some(c => c.q)) { S.kind = null; toast('⚠️ This set has no questions for the Bank Board yet — add some in Admin (🛠️) first.'); return; }
     const ddCells = S.board.flat().filter(c => c.tier >= 300 && c.q);
     shuffle(ddCells)[0].dd = true;
     renderBoard();
@@ -377,8 +378,8 @@ function updateScore(bump = true) {
 function renderBoard() {
   $('#board').style.gridTemplateColumns = matchMedia('(max-width:760px)').matches ? '' : `repeat(${setTopics().length},minmax(0,1fr))`;
   $('#board').innerHTML = setTopics().map((t, ti) => `<div class="col"><div class="col-h"><span class="ic">${t.icon}</span>${t.name}</div>
-    ${S.board[ti].map((c, i) => `<div class="tile ${c.done ? 'done ' + (c.earned > 0 ? 'ok' : 'bad') : ''}"><button data-t="${ti}" data-i="${i}" ${c.done ? 'disabled' : ''} aria-label="${t.name} for ${c.tier} dollars">
-      ${c.done ? (c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier) + `<small>${TYPE_NAME[c.q.type]}</small>`}</button></div>`).join('')}</div>`).join('');
+    ${S.board[ti].map((c, i) => `<div class="tile ${c.done ? 'done ' + (c.empty ? 'empty' : c.earned > 0 ? 'ok' : 'bad') : ''}"><button data-t="${ti}" data-i="${i}" ${c.done ? 'disabled' : ''} aria-label="${t.name} for ${c.tier} dollars">
+      ${c.done ? (c.empty ? '—' : c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier) + `<small>${TYPE_NAME[c.q.type]}</small>`}</button></div>`).join('')}</div>`).join('');
   $$('#board .tile button').forEach(b => b.onclick = () => openCard(S.board[b.dataset.t][b.dataset.i]));
 }
 

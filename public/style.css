@@ -87,6 +87,7 @@ button{font:inherit;cursor:pointer}
 .tile.done button{background:#e7e2cc;color:#9a947a;box-shadow:inset 0 2px 6px rgba(0,0,0,.15);text-shadow:none;cursor:default;transform:none;font-size:clamp(.9rem,1.8vw,1.2rem)}
 .tile.done.ok button{background:#d6efd5;color:var(--green)}
 .tile.done.bad button{background:#f6d9d9;color:var(--red)}
+.tile.done.empty button{background:repeating-linear-gradient(45deg,#efece0,#efece0 8px,#e7e2cc 8px,#e7e2cc 16px);color:#b5ad92;font-style:italic}
 @media(max-width:760px){
   .board{grid-template-columns:1fr;gap:10px}
   .col{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
