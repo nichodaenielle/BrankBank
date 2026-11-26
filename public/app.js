@@ -1138,7 +1138,7 @@ function updateLandingStats() {
   if (t) t.textContent = Object.values(SETS).reduce((n, s) => n + ((s.topics || []).length), 0) || '5+';
   if (b) b.textContent = Object.keys(BADGES).length || '12';
   const ls = $('#land-sets');
-  if (ls) ls.innerHTML = Object.values(SETS).map(s => `<span class="chip">${s.icon || '📚'} ${s.label || s.name}</span>`).join('');
+  if (ls) ls.innerHTML = Object.values(SETS).map(s => `<span class="chip">${s.icon || '📚'} ${(s.label || s.name).replace(/^[^\p{L}\p{N}]+/u, '')}</span>`).join('');
 }
 
 async function boot() {
