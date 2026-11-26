@@ -1073,14 +1073,31 @@ async function wpGiveUp() {
 }
 
 /* ---------- wiring ---------- */
-const LAND_ICONS = ['🧠', '🧬', '🌍', '🔢', '📖', '⚔️', '🔤', '💻'];
+const LAND_ICONS = [
+  // 🏆 quiz show
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M18 10h28v16a14 14 0 0 1-28 0z" fill="#f6b93b"/><path d="M18 15C8 15 8 27 18 27M46 15c10 0 10 12 0 12" stroke="#f6b93b" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="29" y="40" width="6" height="8" fill="#d68910"/><rect x="21" y="48" width="22" height="6" rx="3" fill="#d68910"/></svg>',
+  // ⚛️ science
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="6" fill="#e63946"/><g fill="none" stroke="#457b9d" stroke-width="4"><ellipse cx="32" cy="32" rx="27" ry="11"/><ellipse cx="32" cy="32" rx="27" ry="11" transform="rotate(60 32 32)"/><ellipse cx="32" cy="32" rx="27" ry="11" transform="rotate(120 32 32)"/></g></svg>',
+  // 🌍 geography
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="24" fill="#4cc9f0"/><path d="M13 27c5-6 12-8 18-6 5 1 9 5 13 3 3-1 6-4 7-2-2 7-7 11-13 12-6 1-10-2-15-1-4 1-8 3-10 6z" fill="#80ed99"/><ellipse cx="32" cy="32" rx="9" ry="24" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/></svg>',
+  // 🔢 math
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><text x="32" y="47" text-anchor="middle" font-family="Georgia,serif" font-style="italic" font-weight="bold" font-size="44" fill="#8338ec">π</text></svg>',
+  // 📖 bible / religion
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M12 17c7-3 13-3 20 1v31c-7-4-13-4-20-1z" fill="#fff" stroke="#8d6e63" stroke-width="3"/><path d="M52 17c-7-3-13-3-20 1v31c7-4 13-4 20-1z" fill="#f8f4e8" stroke="#8d6e63" stroke-width="3"/><line x1="32" y1="18" x2="32" y2="49" stroke="#8d6e63" stroke-width="3"/><path d="M18 24h8M18 30h8M18 36h6M46 24h-8M46 30h-8M46 36h-6" stroke="#b0a08c" stroke-width="2.5"/></svg>',
+  // 🏛️ history
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M14 12h36L32 30z" fill="#e07a5f"/><rect x="17" y="32" width="30" height="6" fill="#d66a4f"/><rect x="21" y="40" width="5" height="16" fill="#e07a5f"/><rect x="38" y="40" width="5" height="16" fill="#e07a5f"/><rect x="29" y="40" width="6" height="16" fill="#e07a5f"/><rect x="14" y="56" width="36" height="6" rx="2" fill="#d66a4f"/></svg>',
+  // 🔤 language
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M10 14h44v25H32l-12 11V39H10z" fill="#06d6a0"/><text x="32" y="35" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="19" fill="#fff">Aa</text></svg>',
+  // 💻 technology
+  '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="16" y="16" width="32" height="32" rx="5" fill="#3a86ff"/><rect x="24" y="24" width="16" height="16" rx="2" fill="#ffd166"/><g stroke="#3a86ff" stroke-width="4" stroke-linecap="round"><line x1="24" y1="8" x2="24" y2="16"/><line x1="32" y1="8" x2="32" y2="16"/><line x1="40" y1="8" x2="40" y2="16"/><line x1="24" y1="48" x2="24" y2="56"/><line x1="32" y1="48" x2="32" y2="56"/><line x1="40" y1="48" x2="40" y2="56"/><line x1="8" y1="24" x2="16" y2="24"/><line x1="8" y1="32" x2="16" y2="32"/><line x1="8" y1="40" x2="16" y2="40"/><line x1="48" y1="24" x2="56" y2="24"/><line x1="48" y1="32" x2="56" y2="32"/><line x1="48" y1="40" x2="56" y2="40"/></g></svg>',
+];
 function initLandIcons() {
-  const el = document.querySelector('.land-cell.brain');
+  const el = $('#land-ico');
   if (!el) return;
   let i = 0;
   setInterval(() => {
     el.classList.add('swap');
-    setTimeout(() => { i = (i + 1) % LAND_ICONS.length; el.textContent = LAND_ICONS[i]; el.classList.remove('swap'); }, 450);
+    setTimeout(() => { i = (i + 1) % LAND_ICONS.length; el.innerHTML = LAND_ICONS[i]; el.classList.remove('swap'); }, 450);
   }, 2800);
 }
 
