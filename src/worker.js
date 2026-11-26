@@ -254,7 +254,7 @@ export class Leaderboard extends DurableObject {
         `SELECT name, avatar, badges, cls, SUM(score) score, SUM(correct) correct, SUM(total) total, MIN(ms) ms, MAX(ts) ts FROM (
            SELECT *, ROW_NUMBER() OVER (PARTITION BY key, mode ORDER BY score DESC, ms ASC) rn
            FROM scores WHERE (? = '' OR cls = ?) AND (? = '' OR qset = ?)
-         ) WHERE rn = 1 GROUP BY key ORDER BY score DESC LIMIT ?`,
+         ) WHERE rn = 1 GROUP BY key ORDER BY score DESC, correct DESC, ms ASC LIMIT ?`,
         cls, cls, qset, qset, limit).toArray();
     }
     const [q, args] = this.filtered(mode, cls, day, qset);
