@@ -1073,8 +1073,20 @@ async function wpGiveUp() {
 }
 
 /* ---------- wiring ---------- */
+const LAND_ICONS = ['🧠', '🧬', '🌍', '🔢', '📖', '⚔️', '🔤', '💻'];
+function initLandIcons() {
+  const el = document.querySelector('.land-cell.brain');
+  if (!el) return;
+  let i = 0;
+  setInterval(() => {
+    el.classList.add('swap');
+    setTimeout(() => { i = (i + 1) % LAND_ICONS.length; el.textContent = LAND_ICONS[i]; el.classList.remove('swap'); }, 450);
+  }, 2800);
+}
+
 function init() {
   updateLandingStats();
+  initLandIcons();
   initWelcome();
   $('#c-submit').onclick = submit;
   $('#c-next').onclick = nextCard;

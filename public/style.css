@@ -350,7 +350,8 @@ body:has(#scr-board.active) #music-fab,body:has(#scr-word.active) #music-fab{dis
 .land-stats b{display:block;font-family:Fredoka;font-size:1.6rem;color:var(--gold)}
 .land-art{position:relative;aspect-ratio:1;max-width:520px;width:100%;justify-self:center}
 .land-cell{width:78%;position:absolute;left:11%;top:11%;filter:drop-shadow(0 20px 30px rgba(0,0,0,.4));animation:spin 40s linear infinite}
-.land-cell.brain{display:flex;align-items:center;justify-content:center;font-size:clamp(120px,24vw,230px);line-height:1;animation:float 6s ease-in-out infinite}
+.land-cell.brain{display:flex;align-items:center;justify-content:center;font-size:clamp(120px,24vw,230px);line-height:1;animation:float 6s ease-in-out infinite;transition:opacity .45s ease,transform .45s ease}
+.land-cell.brain.swap{opacity:0;transform:scale(.82)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .fav{position:absolute;width:24%;animation:float 4s ease-in-out infinite}.fav svg{width:100%;height:auto;filter:drop-shadow(0 6px 8px rgba(0,0,0,.3))}
 .fav.f0{left:-2%;top:6%}.fav.f1{right:-2%;top:16%;animation-delay:-1s}.fav.f2{left:4%;bottom:2%;animation-delay:-2s}.fav.f3{right:6%;bottom:-2%;animation-delay:-3s}
