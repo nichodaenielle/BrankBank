@@ -353,8 +353,8 @@ async function startGame(kind) {
       used.add(q.id); return { q, tier, done: false };
     }));
     if (!S.board.flat().some(c => c.q)) { S.kind = null; toast('⚠️ This set has no questions for the Bank Board yet — add some in Admin (🛠️) first.'); return; }
-    const ddCells = S.board.flat().filter(c => c.tier >= 300 && c.q);
-    shuffle(ddCells)[0].dd = true;
+    const dd = shuffle(S.board.flat().filter(c => c.tier >= 300 && c.q))[0];
+    if (dd) dd.dd = true;
     renderBoard();
     $('#board').hidden = false;
   } else {
