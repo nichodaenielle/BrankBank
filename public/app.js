@@ -167,7 +167,7 @@ const setList = () => Object.values(SETS);
 const setById = id => SETS[id] || setList()[0];
 const setTopics = () => setById(S.set).topics;
 const setQuestions = () => QUESTIONS.filter(q => (q.set || 'sci-g8s1') === S.set);
-const setWords = () => { const ids = new Set(setTopics().map(t => t.id)); return WORDS.filter(w => ids.has(w[1])); };
+const setWords = () => { const ids = new Set(setTopics().map(t => t.id)); return WORDS.filter(w => ids.has(w[1]) && (w[3] || 'sci-g8s1') === S.set); };
 function setSet(id) { if (!SETS[id]) return; S.set = id; store.set('set', id); }
 const setTag = () => { const s = setById(S.set); return s.name + (s.grade ? ' · Gr ' + s.grade : '') + (s.semester ? ' · Sem ' + s.semester : ''); };
 const maxScore = mode => mode === 'game' ? setTopics().length * 1600 : MAX[mode];
@@ -330,7 +330,7 @@ const pool = (topic, tier, used) => setQuestions().filter(q => q.topic === topic
 function dailyQueue(day) {
   const rnd = mulberry(hashStr('brainbank|' + day));
   const topics = seededShuffle(setTopics().map(t => t.id), rnd);
-  return TIERS.map((tier, i) => { const list = setQuestions().filter(q => q.topic === topics[i] && q.tier === tier); return { q: list[rnd() * list.length | 0], tier, done: false }; });
+  return TIERS.map((tier, i) => { const list = setQuestions().filter(q => q.topic === topics[i] && q.tier === tier); return { q: list[rnd() * list.length | 0], tier, done: false }; }).filter(c => c.q);
 }
 async function startGame(kind) {
   if (kind === 'word') return startPuzzle();
@@ -347,13 +347,18 @@ async function startGame(kind) {
   updateScore(false);
   const used = new Set();
   if (kind === 'game') {
-    S.board = setTopics().map(t => TIERS.map(tier => { const q = shuffle(pool(t.id, tier, used))[0]; used.add(q.id); return { q, tier, done: false }; }));
-    const ddCells = S.board.flat().filter(c => c.tier >= 300);
+    S.board = setTopics().map(t => TIERS.map(tier => {
+      const q = shuffle(pool(t.id, tier, used))[0];
+      if (!q) return { q: null, tier, done: true, earned: 0, empty: true };
+      used.add(q.id); return { q, tier, done: false };
+    }));
+    const ddCells = S.board.flat().filter(c => c.tier >= 300 && c.q);
     shuffle(ddCells)[0].dd = true;
     renderBoard();
     $('#board').hidden = false;
   } else {
     S.queue = kind === 'daily' ? dailyQueue(S.day) : shuffle(TIERS.flatMap(tier => shuffle(setQuestions().filter(q => q.tier === tier && (!S.pqTopic || q.topic === S.pqTopic) && (!S.pqLevel || q.level === +S.pqLevel))).slice(0, 2).map(q => ({ q, tier, done: false }))));
+    if (!S.queue.length) { S.kind = null; toast('⚠️ No questions match your filters for this set — try another topic or level, or pick a different set.'); return; }
     S.qi = 0;
     renderPop();
   }
@@ -387,7 +392,7 @@ function renderPop() {
 }
 function renderWager() {
   $('#board').style.gridTemplateColumns = '';
-  const used = new Set(S.board.flat().map(c => c.q.id));
+  const used = new Set(S.board.flat().map(c => c.q && c.q.id).filter(Boolean));
   const q = shuffle(setQuestions().filter(x => x.tier === 500 && !used.has(x.id)))[0];
   if (!q) return endGame();
   const max = S.score;

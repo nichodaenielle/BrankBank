@@ -1,4 +1,5 @@
-/* Word Puzzle vocabulary: [ANSWER, topic, clue] — terms and clues taken from the Semester 1 reviewer */
+/* Word Puzzle vocabulary: [ANSWER, topic, clue, setId?] — setId defaults to 'sci-g8s1'.
+   Topic + set must match the active question set or the word is excluded. */
 window.WORDS = [
   ['GAMETES', 'gen', 'Sex cells are also known as these'],
   ['ZYGOTE', 'gen', 'The fertilised egg formed when sex cells fuse'],
