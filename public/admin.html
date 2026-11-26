@@ -92,7 +92,7 @@
 <div class="adm-shell" id="app-view" hidden>
   <header class="adm-top">
     <div class="adm-brand">🛠️ Brain Bank <small>Admin · question bank</small></div>
-    <div><span class="count-note" id="stat-line"></span> <button class="btn small ghost" id="btn-logout" style="color:#fff;border-color:rgba(255,255,255,.5)">Log out</button></div>
+    <div><span class="count-note" id="stat-line"></span> <button class="btn small ghost" id="btn-logout">Log out</button></div>
   </header>
 
   <nav class="tabs">
@@ -139,7 +139,7 @@
   <div class="card-box" style="width:min(680px,100%)" role="dialog" aria-modal="true">
     <div class="card-head"><span class="chip">Set</span><span class="value" id="set-title">New set</span></div>
     <div class="ed-form" id="set-form">
-      <div><label>Set ID <span class="hint-note">(auto from name — lowercase, dashes)</span></label><input id="s-id" placeholder="math-g7s1"></div>
+      <div><label>Set ID <span class="hint-note">(auto-generated from name — you can ignore this)</span></label><input id="s-id" placeholder="auto"></div>
       <div><label>Icon (emoji)</label><input id="s-icon" maxlength="4" placeholder="📚"></div>
       <div class="full"><label>Name</label><input id="s-name" placeholder="e.g. Mathematics"></div>
       <div><label>Grade</label><input id="s-grade" type="number" min="1" max="12" placeholder="7"></div>

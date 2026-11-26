@@ -28,8 +28,10 @@ let TOKEN = localStorage.getItem('bb_admin_token') || null;
 let SETS = {};
 let QUESTIONS = [];
 let editing = null;
+let editingNew = false;
 let setEditing = null;
 let topicTouched = {};
+let setIdTouched = false;
 
 function api(path, opts = {}) {
   const headers = { authorization: 'Bearer ' + TOKEN, ...(opts.headers || {}) };
@@ -128,8 +130,9 @@ function renderQuestions() {
 
 /* ---------- question editor ---------- */
 function openEditor(q) {
+  editingNew = !q;
   editing = q ? JSON.parse(JSON.stringify(q)) : {
-    set: $('f-set').value || Object.keys(SETS)[0], topic: '', tier: 100, type: 'mc',
+    id: newId(), set: $('f-set').value || Object.keys(SETS)[0], topic: '', tier: 100, type: 'mc',
     q: '', choices: ['', ''], answer: 0, src: 'added',
   };
   renderEditor();
@@ -160,12 +163,12 @@ function fieldHtml(key, label, kind, val, type) {
 
 function renderEditor() {
   const q = editing;
-  $('ed-title').textContent = q.id ? 'Edit ' + q.id : 'New question';
+  $('ed-title').textContent = editingNew ? 'New question' : 'Edit ' + q.id;
   $('ed-kind').textContent = TYPES[q.type] || q.type;
   $('ed-err').textContent = '';
 
   const head = `
-    <div><label>ID</label><input id="e-id" value="${esc(q.id || '')}" placeholder="auto if blank" ${q.id ? 'disabled style="background:#eee"' : ''}></div>
+    <div><label>ID <span class="hint-note">(auto-generated — you can ignore this)</span></label><input id="e-id" value="${esc(q.id || '')}" ${editingNew ? '' : 'disabled style="background:#eee"'}></div>
     <div><label>Set</label><select id="e-set">${Object.entries(SETS).map(([id, s]) => `<option value="${esc(id)}" ${id === q.set ? 'selected' : ''}>${esc(s.label || s.name)}</option>`).join('')}</select></div>
     <div><label>Topic</label><select id="e-topic"></select></div>
     <div><label>Value</label><select id="e-tier">${[100, 200, 300, 400, 500].map(t => `<option value="${t}" ${t === q.tier ? 'selected' : ''}>$${t}</option>`).join('')}</select></div>
@@ -297,7 +300,7 @@ $('ed-cancel').onclick = () => $('ed-modal').hidden = true;
 $('ed-save').onclick = async () => {
   $('ed-err').textContent = '';
   const q = JSON.parse(JSON.stringify(editing));
-  if (!q.id) q.id = newId();
+  if (editingNew && !q.id) q.id = newId();
   if (!q.q || !String(q.q).trim()) { $('ed-err').textContent = 'Question text is required'; return; }
   if (!q.set || !q.topic) { $('ed-err').textContent = 'Set and topic are required'; return; }
   // type-specific normalization
@@ -321,7 +324,7 @@ $('ed-save').onclick = async () => {
   ['img', 'revealImg', 'why', 'acc'].forEach(k => { if (q[k] === '' || (Array.isArray(q[k]) && !q[k].length)) delete q[k]; });
   q.tier = +q.tier;
 
-  const wasEdit = !!editing.id;
+  const wasEdit = !editingNew;
   const r = await api('/questions' + (wasEdit ? '/' + encodeURIComponent(editing.id) : ''), { method: wasEdit ? 'PUT' : 'POST', body: { question: q } });
   if (!r.ok) { $('ed-err').textContent = r.error || 'Save failed'; return; }
   if (wasEdit) {
@@ -368,6 +371,7 @@ function renderSets() {
 function openSetEditor(s, id) {
   setEditing = s ? JSON.parse(JSON.stringify(s)) : { id: '', name: '', grade: 7, semester: 1, icon: '📚', subject: '', label: '', topics: [{ id: '', name: '', icon: '' }] };
   topicTouched = {};
+  setIdTouched = !!s;
   $('s-delete').hidden = !s;
   $('s-delete').dataset.id = id || '';
   $('set-title').textContent = s ? 'Edit ' + (s.label || s.name) : 'New question set';
@@ -421,9 +425,15 @@ function renderSetTopics() {
 }
 $('s-addt').onclick = () => { setEditing.topics.push({ id: '', name: '', icon: '' }); renderSetTopics(); };
 
-$('s-id').addEventListener('input', () => { setEditing.id = $('s-id').value.trim().toLowerCase(); renderSetTopics(); });
+$('s-id').addEventListener('input', () => { setIdTouched = true; setEditing.id = $('s-id').value.trim().toLowerCase(); renderSetTopics(); });
 $('s-icon').addEventListener('input', syncLabel);
-$('s-name').addEventListener('input', syncLabel);
+$('s-name').addEventListener('input', () => {
+  if (!setIdTouched) {
+    const slug = slugify($('s-name').value);
+    if (slug) { $('s-id').value = slug; setEditing.id = slug; renderSetTopics(); }
+  }
+  syncLabel();
+});
 $('s-grade').addEventListener('input', syncLabel);
 $('s-semester').addEventListener('input', syncLabel);
 $('s-label').addEventListener('input', () => { $('s-label').dataset.touched = '1'; setEditing.label = $('s-label').value; });
