@@ -58,7 +58,7 @@ a{color:#ffd34d}
 (() => {
   const $ = s => document.querySelector(s);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const money = n => '$' + Math.round(n).toLocaleString();
+  const money = n => '🧠' + Math.round(n).toLocaleString();
   const medal = i => ['🥇', '🥈', '🥉'][i] || i + 1;
   const KIND = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily', word: 'Word Puzzle' };
   const qp = new URLSearchParams(location.search);

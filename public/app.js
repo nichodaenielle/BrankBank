@@ -14,7 +14,7 @@ const BADGES = {
   perfect: ['💯', 'Perfect Topic', 'Every card in one topic correct'],
   clear: ['🏁', 'Board Cleared', 'Answered all 25 board cards'],
   speed: ['⚡', 'Speed Demon', '5 correct answers in under 10 seconds each'],
-  brain: ['🧠', 'Big Brain', '3 or more $500 cards correct'],
+  brain: ['🧠', 'Big Brain', '3 or more 🧠500 cards correct'],
   roller: ['🎰', 'High Roller', 'Won a Final Wager of half your bank or more'],
   pure: ['🛟', 'No Lifelines', '70%+ correct without using a lifeline'],
   flawless: ['🌟', 'Flawless', 'Every Pop Quiz / Daily question correct'],
@@ -27,11 +27,11 @@ const cleanCls = c => String(c || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').s
 const hashStr = str => { let h = 1779033703; for (const ch of str) { h = Math.imul(h ^ ch.charCodeAt(0), 3432918353); h = h << 13 | h >>> 19; } return h >>> 0; };
 const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const seededShuffle = (a, rnd) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const signed = n => n > 0 ? '+' + money(n) : n < 0 ? '−' + money(-n) : '$0';
+const signed = n => n > 0 ? '+' + money(n) : n < 0 ? '−' + money(-n) : '🧠0';
 const TITLES = [[0.9, 'Legend'], [0.75, 'Master'], [0.55, 'Expert'], [0.35, 'Scholar'], [0.15, 'Apprentice'], [0, 'Rookie']];
 const topicName = id => setTopics().find(t => t.id === id).name;
 const topicIcon = id => setTopics().find(t => t.id === id).icon;
-const money = n => '$' + Math.round(n).toLocaleString();
+const money = n => '🧠' + Math.round(n).toLocaleString();
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const titleFor = (score, mode) => TITLES.find(([p]) => score >= p * maxScore(mode))[1];
@@ -415,7 +415,7 @@ function renderBoard() {
   $('#board').style.gridTemplateColumns = matchMedia('(max-width:760px)').matches ? '' : `repeat(${setTopics().length},minmax(0,1fr))`;
   $('#board').innerHTML = setTopics().map((t, ti) => `<div class="col"><div class="col-h"><span class="ic">${t.icon}</span>${t.name}</div>
     ${S.board[ti].map((c, i) => `<div class="tile ${c.done ? 'done ' + (c.empty ? 'empty' : c.earned > 0 ? 'ok' : 'bad') : ''}"><button data-t="${ti}" data-i="${i}" ${c.done ? 'disabled' : ''} aria-label="${t.name} for ${c.tier} dollars">
-      ${c.done ? (c.empty ? '—' : c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier) + `<small>${TYPE_NAME[c.q.type]}</small>`}</button></div>`).join('')}</div>`).join('');
+      ${c.done ? (c.empty ? '—' : c.earned > 0 ? '+' + money(c.earned) : '🧠0') : money(c.tier) + `<small>${TYPE_NAME[c.q.type]}</small>`}</button></div>`).join('')}</div>`).join('');
   $$('#board .tile button').forEach(b => b.onclick = () => openCard(S.board[b.dataset.t][b.dataset.i]));
 }
 
@@ -423,7 +423,7 @@ function renderPop() {
   $('#board').style.gridTemplateColumns = '';
   const head = S.kind === 'daily' ? `<h2>📅 Daily Challenge</h2><p>${S.day} · 5 questions · the same for everyone today</p>` : '<h2>⏱️ Pop Quiz</h2><p>10 random questions · 2 from every value tier</p>';
   $('#board').innerHTML = `<div class="pop">${head}<div class="pop-steps">${S.queue.map((c, i) =>
-    `<div class="ps ${c.done ? (c.earned > 0 ? 'ok' : 'bad') : i === S.qi ? 'cur' : ''}"><b>${i + 1}</b><span>${c.done ? (c.earned > 0 ? '+' + money(c.earned) : '$0') : money(c.tier)}</span></div>`).join('')}</div>
+    `<div class="ps ${c.done ? (c.earned > 0 ? 'ok' : 'bad') : i === S.qi ? 'cur' : ''}"><b>${i + 1}</b><span>${c.done ? (c.earned > 0 ? '+' + money(c.earned) : '🧠0') : money(c.tier)}</span></div>`).join('')}</div>
     ${S.qi < S.queue.length ? '<button class="btn big gold" id="pop-resume">Continue quiz →</button>' : ''}</div>`;
   const r = $('#pop-resume'); if (r) r.onclick = () => openCard(S.queue[S.qi]);
 }
@@ -695,7 +695,7 @@ function wrong(reason) {
   if (c.tries >= triesFor(c)) {
     stopTimer(); c.over = true;
     const lose = c.cell.final && !S.practice ? c.base : 0;
-    const html = `<h4>❌ ${reason || 'Wrong'} — ${lose ? 'you lose ' + money(lose) : 'card is now worth $0'}</h4>${explainExtra(false)}`;
+    const html = `<h4>❌ ${reason || 'Wrong'} — ${lose ? 'you lose ' + money(lose) : 'card is bust'}</h4>${explainExtra(false)}`;
     finishCard(-lose, html, 'bad');
     return;
   }
@@ -714,10 +714,10 @@ function wrong(reason) {
 }
 async function forfeit() {
   const c = S.card; if (!c || c.over) return;
-  if (!S.practice && !(await askConfirm('Forfeit this card? You get $0 and the answer is shown.', 'Forfeit', true))) return;
+  if (!S.practice && !(await askConfirm('Forfeit this card? You get 🧠0 and the answer is shown.', 'Forfeit', true))) return;
   stopTimer(); c.over = true; c.last = null;
   sfx.bad();
-  finishCard(0, `<h4>🏳️ ${S.practice ? 'Answer' : 'Forfeited — $0'}</h4>${explainExtra(false)}`, S.practice ? 'reveal' : 'bad');
+  finishCard(0, `<h4>🏳️ ${S.practice ? 'Answer' : 'Forfeited — 🧠0'}</h4>${explainExtra(false)}`, S.practice ? 'reveal' : 'bad');
 }
 function answerHTML(q) {
   switch (q.type) {
@@ -1038,7 +1038,7 @@ function wpResolve(wd, solved, why) {
   S.score += earned;
   S.log.push({ q: { id: 'w-' + wd.w, topic: wd.topic, q: wd.clue, type: 'word', word: wd.w }, earned, tier: wd.base, ok: earned > 0, tries: wd.tries + (earned > 0 ? 1 : 0), ms: now - WP.last });
   WP.last = now;
-  wpFeedback(earned > 0 ? `✅ ${wd.w}! +${money(earned)}${extra}` : `❌ The answer is <b>${wd.w}</b> (${why}) · $0`, earned > 0 ? 'ok' : 'bad');
+  wpFeedback(earned > 0 ? `✅ ${wd.w}! +${money(earned)}${extra}` : `❌ The answer is <b>${wd.w}</b> (${why}) · 🧠0`, earned > 0 ? 'ok' : 'bad');
   wpClues(); wpUpdate(earned > 0); wpHighlight(); livePing(false);
   if (WP.words.every(w => w.status !== 'open')) setTimeout(endGame, 1400);
 }
@@ -1051,7 +1051,7 @@ function wpUpdate(bump) {
   const sk = $('#hud-streak-w'); sk.hidden = S.streak < 2; sk.textContent = '🔥 ' + S.streak + (S.streak >= 5 ? ' · +25%' : S.streak >= 3 ? ' · +10%' : '');
 }
 function wpClues() {
-  const li = wd => { const i = WP.words.indexOf(wd); return `<li data-i="${i}" class="${wd.status}"><b>${wd.n}</b><span>${esc(wd.clue)} <small>(${wd.w.length})</small></span><em>${wd.status === 'open' ? money(wd.value) : wd.status === 'ok' ? '+' + money(wd.earned) : '$0'}</em></li>`; };
+  const li = wd => { const i = WP.words.indexOf(wd); return `<li data-i="${i}" class="${wd.status}"><b>${wd.n}</b><span>${esc(wd.clue)} <small>(${wd.w.length})</small></span><em>${wd.status === 'open' ? money(wd.value) : wd.status === 'ok' ? '+' + money(wd.earned) : '🧠0'}</em></li>`; };
   const by = d => WP.words.filter(w => w.dir === d).sort((a, b) => a.n - b.n).map(li).join('');
   $('#wp-across').innerHTML = by('a'); $('#wp-down').innerHTML = by('d');
   $$('.wp-clues li').forEach(el => el.onclick = () => { const wd = WP.words[+el.dataset.i]; WP.dir = wd.dir; const cs = wpCells(wd); (cs.find(c => !c.el.value) || cs[0]).el.focus(); WP.dir = wd.dir; wpHighlight(); });
@@ -1068,7 +1068,7 @@ function wpRevealLetter() {
 }
 async function wpGiveUp() {
   const wd = wpActive(); if (!wd || wd.status !== 'open') return;
-  if (!(await askConfirm(`Give up ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'}? It will score $0 and the answer will be shown.`, 'Give up', true))) return;
+  if (!(await askConfirm(`Give up ${wd.n} ${wd.dir === 'a' ? 'Across' : 'Down'}? It will score 🧠0 and the answer will be shown.`, 'Give up', true))) return;
   wd.value = 0; wpResolve(wd, false, 'gave up');
 }
 
