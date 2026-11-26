@@ -249,6 +249,14 @@ export class Leaderboard extends DurableObject {
   }
 
   top(mode, cls = '', day = '', limit = 50, qset = '') {
+    if (mode === 'all') {
+      return this.sql.exec(
+        `SELECT name, avatar, badges, cls, SUM(score) score, SUM(correct) correct, SUM(total) total, MIN(ms) ms, MAX(ts) ts FROM (
+           SELECT *, ROW_NUMBER() OVER (PARTITION BY key, mode ORDER BY score DESC, ms ASC) rn
+           FROM scores WHERE (? = '' OR cls = ?) AND (? = '' OR qset = ?)
+         ) WHERE rn = 1 GROUP BY key ORDER BY score DESC LIMIT ?`,
+        cls, cls, qset, qset, limit).toArray();
+    }
     const [q, args] = this.filtered(mode, cls, day, qset);
     return this.sql.exec(
       `SELECT name, avatar, badges, cls, score, correct, total, ms, ts FROM (
@@ -265,6 +273,15 @@ export class Leaderboard extends DurableObject {
   }
 
   sections(mode, day = '', qset = '') {
+    if (mode === 'all') {
+      return this.sql.exec(
+        `SELECT cls, COUNT(*) players, SUM(s) total, MAX(s) best, CAST(AVG(s) AS INTEGER) avg FROM (
+           SELECT cls, key, SUM(best) s FROM (
+             SELECT cls, key, mode, MAX(score) best FROM scores
+             WHERE cls <> '' AND (? = '' OR qset = ?) GROUP BY cls, key, mode
+           ) GROUP BY cls, key
+         ) GROUP BY cls ORDER BY total DESC LIMIT 30`, qset, qset).toArray();
+    }
     return this.sql.exec(
       `SELECT cls, COUNT(*) players, SUM(s) total, MAX(s) best, CAST(AVG(s) AS INTEGER) avg FROM (
          SELECT cls, key, MAX(score) s FROM scores WHERE mode = ? AND cls <> '' AND (? = '' OR day = ?) AND (? = '' OR qset = ?) GROUP BY cls, key
@@ -275,7 +292,7 @@ export class Leaderboard extends DurableObject {
     const url = new URL(request.url), p = url.searchParams;
     const ip = request.headers.get('cf-connecting-ip') || 'x';
     if (url.pathname === '/api/content' || url.pathname.startsWith('/api/admin/')) return this.admin(request, url);
-    const qMode = MODES[p.get('mode')] ? p.get('mode') : 'game';
+    const qMode = p.get('mode') === 'all' ? 'all' : (MODES[p.get('mode')] ? p.get('mode') : 'game');
     const qDay = qMode === 'daily' ? (/^\d{4}-\d{2}-\d{2}$/.test(p.get('day') || '') ? p.get('day') : manilaDay()) : '';
     const qSet = /^[a-z0-9][a-z0-9-]{0,30}$/.test(p.get('set') || '') ? p.get('set') : '';
 

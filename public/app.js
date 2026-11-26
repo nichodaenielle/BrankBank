@@ -170,7 +170,7 @@ const setQuestions = () => QUESTIONS.filter(q => (q.set || 'sci-g8s1') === S.set
 const setWords = () => { const ids = new Set(setTopics().map(t => t.id)); return WORDS.filter(w => ids.has(w[1]) && (w[3] || 'sci-g8s1') === S.set); };
 function setSet(id) { if (!SETS[id]) return; S.set = id; store.set('set', id); }
 const setTag = () => { const s = setById(S.set); return s.name + (s.grade ? ' · Gr ' + s.grade : '') + (s.semester ? ' · Sem ' + s.semester : ''); };
-const maxScore = mode => mode === 'game' ? setTopics().length * 1600 : MAX[mode];
+const maxScore = mode => mode === 'game' ? setTopics().length * 1600 : mode === 'all' ? setTopics().length * 1600 + MAX.pop + MAX.daily + MAX.word : MAX[mode];
 
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('active', s.id === id)); window.scrollTo(0, 0); if (id === 'scr-landing' || id === 'scr-welcome') musicStart(); }
 function toast(msg, ms = 2200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); }
@@ -259,7 +259,21 @@ function renderSections(list) {
 let lbReq = 0;
 async function loadLB() {
   const ol = $('#lb-list'), n = ++lbReq;
-  if (lbScope === 'solo') return renderLB(localLB(lbMode), lbMode);
+  if (lbScope === 'solo') {
+    if (lbMode !== 'all') return renderLB(localLB(lbMode), lbMode);
+    const byName = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('sbq_lb_' + S.set + '|')) continue;
+      let list; try { list = JSON.parse(localStorage.getItem(k)); } catch { continue; }
+      (list || []).forEach(e => {
+        const n = e.name.toLowerCase();
+        const b = byName[n] || (byName[n] = { name: e.name, avatar: e.avatar, badges: e.badges, cls: '', score: 0, correct: 0, total: 0, ms: 999999999 });
+        b.score += e.score; b.correct += e.correct; b.total += e.total; b.ms = Math.min(b.ms, e.ms);
+      });
+    }
+    return renderLB(Object.values(byName).sort((a, b) => b.score - a.score), 'all');
+  }
   if (lbScope === 'cls' && !S.cls) { ol.innerHTML = '<li class="empty">Type a class code (Competition mode) to see your class ranking. 🏫</li>'; return; }
   ol.innerHTML = '<li class="empty">Loading…</li>';
   const qs = 'mode=' + lbMode + (lbMode === 'daily' ? '&day=' + manilaDay() : '') + '&set=' + encodeURIComponent(S.set) + (lbScope === 'cls' ? '&cls=' + encodeURIComponent(S.cls) : '');
