@@ -327,6 +327,12 @@ export default {
       return env.LB.get(env.LB.idFromName('global')).fetch(req);
     }
     if (url.pathname.startsWith('/api/')) return json({ error: 'not found' }, 404);
-    return env.ASSETS.fetch(request);
+    const res = await env.ASSETS.fetch(request);
+    if (/\.(html|js|css)$/.test(url.pathname)) {
+      const h = new Headers(res.headers);
+      h.set('cache-control', 'no-cache');
+      return new Response(res.body, { status: res.status, headers: h });
+    }
+    return res;
   }
 };
