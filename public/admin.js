@@ -184,7 +184,9 @@ function renderEditor() {
   const topicSel = $('e-topic');
   const fillTopics = () => {
     const set = SETS[$('e-set').value];
-    topicSel.innerHTML = (set ? set.topics : []).map(t => `<option value="${esc(t.id)}" ${t.id === q.topic ? 'selected' : ''}>${esc(t.icon || '')} ${esc(t.name)}</option>`).join('');
+    const topics = set ? set.topics : [];
+    topicSel.innerHTML = topics.map(t => `<option value="${esc(t.id)}" ${t.id === q.topic ? 'selected' : ''}>${esc(t.icon || '')} ${esc(t.name)}</option>`).join('');
+    if (!q.topic || !topics.some(t => t.id === q.topic)) { q.topic = topicSel.value; topicSel.value = q.topic; }
   };
   fillTopics();
   topicSel.onchange = () => { q.topic = topicSel.value; };
