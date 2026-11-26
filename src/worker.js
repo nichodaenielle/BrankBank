@@ -81,6 +81,26 @@ export class Leaderboard extends DurableObject {
     return null;
   }
 
+  validateSet(s, existingId = '') {
+    if (!s || typeof s !== 'object') return 'set must be an object';
+    if (!/^[a-z0-9][a-z0-9-]{1,30}$/.test(s.id || '')) return 'set id must be 2-31 chars: lowercase letters, numbers, dashes';
+    if (existingId && s.id !== existingId) return 'set id cannot be changed';
+    if (typeof s.name !== 'string' || !s.name.trim()) return 'set needs a name';
+    if (!Number.isFinite(+s.grade) || +s.grade < 1 || +s.grade > 12) return 'grade must be 1-12';
+    if (!Number.isFinite(+s.semester) || +s.semester < 1 || +s.semester > 3) return 'semester must be 1-3';
+    if (!Array.isArray(s.topics) || !s.topics.length) return 'set needs at least one topic';
+    const ids = new Set();
+    for (const t of s.topics) {
+      if (!t || typeof t !== 'object') return 'each topic must be an object';
+      if (!/^[a-z0-9][a-z0-9-]{0,30}$/.test(t.id || '')) return 'topic id must be lowercase letters, numbers, dashes';
+      if (ids.has(t.id)) return 'duplicate topic id "' + t.id + '"';
+      ids.add(t.id);
+      if (typeof t.name !== 'string' || !t.name.trim()) return 'topic "' + t.id + '" needs a name';
+      if (t.icon !== undefined && typeof t.icon !== 'string') return 'topic icon must be text';
+    }
+    return null;
+  }
+
   async adminToken(request) {
     const t = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
     if (!t) return false;
@@ -128,6 +148,38 @@ export class Leaderboard extends DurableObject {
     }
     if (one && request.method === 'DELETE') {
       this.sql.exec('DELETE FROM questions WHERE id = ?', decodeURIComponent(one[1]));
+      return json({ ok: true });
+    }
+    if (p === '/api/admin/sets' && request.method === 'POST') {
+      let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const err = this.validateSet(b.set);
+      if (err) return json({ error: err }, 400);
+      const s = { ...b.set, name: b.set.name.trim(), grade: +b.set.grade, semester: +b.set.semester,
+        icon: String(b.set.icon || '📚').slice(0, 8), subject: String(b.set.subject || b.set.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'general',
+        label: String(b.set.label || `${b.set.icon || '📚'} ${b.set.name.trim()} · Grade ${b.set.grade} · Sem ${b.set.semester}`).slice(0, 60),
+        topics: b.set.topics.map(t => ({ id: t.id, name: t.name.trim(), icon: String(t.icon || '').slice(0, 8) })) };
+      this.upsertSet(s);
+      return json({ ok: true, set: s });
+    }
+    const setOne = p.match(/^\/api\/admin\/sets\/([^/]+)$/);
+    if (setOne && request.method === 'PUT') {
+      let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const id = decodeURIComponent(setOne[1]);
+      if (!b.set || b.set.id !== id) return json({ error: 'set id cannot be changed' }, 400);
+      const err = this.validateSet(b.set, id);
+      if (err) return json({ error: err }, 400);
+      const s = { ...b.set, name: b.set.name.trim(), grade: +b.set.grade, semester: +b.set.semester,
+        icon: String(b.set.icon || '📚').slice(0, 8),
+        label: String(b.set.label || `${b.set.icon || '📚'} ${b.set.name.trim()} · Grade ${b.set.grade} · Sem ${b.set.semester}`).slice(0, 60),
+        topics: b.set.topics.map(t => ({ id: t.id, name: t.name.trim(), icon: String(t.icon || '').slice(0, 8) })) };
+      this.upsertSet(s);
+      return json({ ok: true, set: s });
+    }
+    if (setOne && request.method === 'DELETE') {
+      const id = decodeURIComponent(setOne[1]);
+      const n = this.sql.exec('SELECT COUNT(*) c FROM questions WHERE qset = ?', id).one().c;
+      if (n) return json({ error: `Set has ${n} question(s) — reassign or delete them first` }, 400);
+      this.sql.exec('DELETE FROM sets WHERE id = ?', id);
       return json({ ok: true });
     }
     if (p === '/api/admin/import' && request.method === 'POST') {
