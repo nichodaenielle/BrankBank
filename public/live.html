@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brain Bank · Live Classroom</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📺</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:"Sig";src:url(fonts/sig.woff2) format("woff2");font-display:block}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Nunito,system-ui,sans-serif;color:#fff;background:radial-gradient(ellipse at top,#2f7a6b,#0f2925);padding:24px 3vw 70px}
+h1{font-family:Fredoka;font-size:clamp(2rem,4.5vw,3.6rem);margin:0;text-shadow:0 4px 0 rgba(0,0,0,.25)}
+h1 span{color:#ffd34d}
+.top{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+.join{background:rgba(255,255,255,.12);border-radius:16px;padding:12px 18px;font-size:clamp(1rem,1.8vw,1.4rem);font-weight:700}
+.join b{color:#ffd34d;font-family:Fredoka;font-size:1.3em;letter-spacing:2px}
+form{display:flex;gap:8px;margin:18px 0}
+input{font:inherit;font-size:1.2rem;padding:10px 14px;border-radius:12px;border:0;text-transform:uppercase;letter-spacing:1px;width:220px}
+button{font:inherit;font-weight:800;font-size:1.1rem;border:0;border-radius:12px;padding:10px 18px;background:#ffd34d;color:#3b2a00;cursor:pointer}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-top:16px}
+.panel{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:16px}
+.panel h2{font-family:Fredoka;margin:0 0 10px;font-size:1.5rem}
+.row{display:grid;grid-template-columns:56px 50px 1fr auto;align-items:center;gap:10px;background:#fffdf5;color:#263238;border-radius:14px;padding:10px 14px;margin-bottom:8px;transition:transform .3s}
+.row .pos{font-family:Fredoka;font-size:1.6rem;text-align:center}
+.row .av{font-size:2rem;text-align:center}
+.row .nm{font-weight:800;font-size:1.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .nm small{display:block;font-weight:700;color:#778;font-size:.85rem}
+.row .sc{font-family:Fredoka;font-weight:700;font-size:1.8rem;color:#3c8d3f}
+.row.done{opacity:.8}
+.row.up{animation:up .6s}
+@keyframes up{0%{background:#fff1b8;transform:scale(1.03)}}
+.mini .row{grid-template-columns:40px 36px 1fr auto;padding:6px 10px}
+.mini .row .sc{font-size:1.2rem}.mini .row .nm{font-size:1rem}.mini .row .av{font-size:1.4rem}.mini .row .pos{font-size:1.2rem}
+.empty{opacity:.8;font-weight:700;padding:20px;text-align:center}
+.stat{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-weight:800}
+.stat div{background:rgba(255,255,255,.12);padding:6px 14px;border-radius:999px}
+footer{position:fixed;left:0;right:0;bottom:0;text-align:center;padding:10px;background:rgba(0,0,0,.3);font-weight:700}
+footer .sig{font-family:"Sig","Snell Roundhand","Segoe Script","Brush Script MT",cursive;font-size:28px;font-weight:400;display:inline-block;transform:translateY(3px) rotate(-3deg)}
+a{color:#ffd34d}
+@media (max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>📺 Brain <span>Bank</span> Live</h1>
+  <div class="join" id="join" hidden>Join at <b id="host"></b> → 🌐 Competition → Class code <b id="code"></b></div>
+</div>
+<form id="f"><input id="cls" maxlength="16" placeholder="CLASS CODE" autocomplete="off" required><button>Show live board</button></form>
+<div class="stat" id="stat"></div>
+<div class="grid">
+  <div class="panel"><h2>⚡ Playing now</h2><div id="live"><div class="empty">Enter a class code to start.</div></div></div>
+  <div class="panel mini"><h2>🏆 Class best · Bank Board</h2><div id="best"></div><h2 style="margin-top:14px">⏱️ Class best · Pop Quiz</h2><div id="bestpop"></div></div>
+</div>
+<footer>Brain Bank — by <span class="sig">Nichzz</span> · <a href="/">Back to game</a></footer>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = n => '$' + Math.round(n).toLocaleString();
+  const medal = i => ['🥇', '🥈', '🥉'][i] || i + 1;
+  const KIND = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily' };
+  let cls = (new URLSearchParams(location.search).get('code') || localStorage.getItem('sbq_live_cls') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
+  let prev = {}, t1, t2;
+  $('#host').textContent = location.host;
+  $('#f').onsubmit = e => { e.preventDefault(); cls = $('#cls').value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16); start(); };
+  const rows = (list, mini) => list.map((p, i) => `<div class="row ${p.done ? 'done' : ''} ${!mini && prev[p.name] !== undefined && prev[p.name] < p.score ? 'up' : ''}">
+    <span class="pos">${medal(i)}</span><span class="av">${esc(p.avatar || '🙂')}</span>
+    <span class="nm">${esc(p.name)}<small>${mini ? `${p.correct}/${p.total} correct` : `${KIND[p.kind] || ''} · ${p.correct}/${p.answered} correct${p.streak >= 2 ? ' · 🔥' + p.streak : ''} · ${p.done ? '✅ finished' : '🎮 playing'}`}</small></span>
+    <span class="sc">${money(p.score)}</span></div>`).join('');
+  async function live() {
+    try {
+      const r = await (await fetch('/api/live?cls=' + encodeURIComponent(cls), { cache: 'no-store' })).json();
+      const list = r.players || [];
+      $('#live').innerHTML = list.length ? rows(list) : '<div class="empty">Waiting for players… ask students to enter class code <b>' + esc(cls) + '</b>.</div>';
+      const playing = list.filter(p => !p.done).length, ans = list.reduce((a, p) => a + p.answered, 0), cor = list.reduce((a, p) => a + p.correct, 0);
+      $('#stat').innerHTML = `<div>👥 ${list.length} players</div><div>🎮 ${playing} playing</div><div>✅ ${ans ? Math.round(cor / ans * 100) : 0}% class accuracy</div><div>💰 ${money(list.reduce((a, p) => a + p.score, 0))} banked</div>`;
+      prev = Object.fromEntries(list.map(p => [p.name, p.score]));
+    } catch {}
+  }
+  async function best() {
+    for (const [mode, el] of [['game', '#best'], ['pop', '#bestpop']]) {
+      try {
+        const r = await (await fetch(`/api/leaderboard?mode=${mode}&cls=${encodeURIComponent(cls)}`, { cache: 'no-store' })).json();
+        $(el).innerHTML = (r.entries || []).length ? rows(r.entries.slice(0, 10), true) : '<div class="empty">No scores yet.</div>';
+      } catch {}
+    }
+  }
+  function start() {
+    if (!cls) return;
+    localStorage.setItem('sbq_live_cls', cls); $('#cls').value = cls; $('#code').textContent = cls; $('#join').hidden = false;
+    history.replaceState(null, '', '?code=' + cls);
+    clearInterval(t1); clearInterval(t2); prev = {};
+    live(); best(); t1 = setInterval(live, 3000); t2 = setInterval(best, 15000);
+  }
+  start();
+})();
+</script>
+</body>
+</html>

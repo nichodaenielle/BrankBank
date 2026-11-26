@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Brain Bank · The Science Showdown</title>
+<meta name="description" content="Brain Bank: a game-show style Grade 8 science reviewer. Pick a card, bank the cash, climb the leaderboard.">
+<meta name="theme-color" content="#2f7a6b">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- WELCOME -->
+  <section id="scr-welcome" class="screen active">
+    <div class="welcome-grid">
+      <div class="notebook hero-card">
+        <div class="spiral"></div>
+        <div class="paper">
+          <h1 class="logo">🧠 Brain <span>Bank</span></h1>
+          <p class="sub">The Science Showdown</p>
+          <p class="tag">Pick a card. Bank the cash. Beat the board!</p>
+          <img class="kids" src="img/kids.webp" alt="Students reviewing together">
+          <label class="lbl" for="name">Your name</label>
+          <div class="name-row"><button class="avatar-btn" id="avatar-btn" type="button" title="Choose avatar" aria-label="Choose avatar">🧑‍🔬</button><input id="name" maxlength="20" placeholder="e.g. Juan D." autocomplete="nickname"></div>
+          <div class="avatars" id="avatars" hidden></div>
+          <div id="my-badges" class="my-badges"></div>
+          <div class="lbl">Choose your challenge</div>
+          <div class="modes">
+            <button class="mode on" data-mode="comp"><b>🌐 Competition</b><small>Scores go on the shared online leaderboard</small></button>
+            <button class="mode" data-mode="solo"><b>📱 Individual Challenge</b><small>Scores saved on this device only</small></button>
+          </div>
+          <div class="cls-row" id="cls-row"><label class="lbl" for="cls">🏫 Class code <small>(optional — joins your class leaderboard &amp; live screen)</small></label><input id="cls" maxlength="16" placeholder="e.g. 8-RIZAL" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
+          <div class="play-row">
+            <button class="btn big gold" id="btn-game">🎲 Play Bank Board</button>
+            <button class="btn big teal" id="btn-pop">⏱️ Pop Quiz</button>
+          </div>
+          <button class="btn big daily wide" id="btn-daily">📅 Daily Challenge <small id="daily-info"></small></button>
+          <div class="play-row two">
+            <button class="btn ghost" id="btn-bank">📚 Question Bank</button>
+            <button class="btn ghost" id="btn-review">🔁 Review my misses <small id="miss-count"></small></button>
+          </div>
+          <p class="err" id="name-err"></p>
+        </div>
+      </div>
+      <div class="notebook lb-card">
+        <div class="spiral"></div>
+        <div class="paper">
+          <h2>🏆 Leaderboard</h2>
+          <div class="tabs" id="lb-scope">
+            <button class="on" data-scope="comp">🌐 Everyone</button>
+            <button data-scope="cls">🏫 My class</button>
+            <button data-scope="sec">🏆 Sections</button>
+            <button data-scope="solo">📱 This device</button>
+          </div>
+          <div class="tabs small" id="lb-mode">
+            <button class="on" data-lbmode="game">Bank Board</button>
+            <button data-lbmode="pop">Pop Quiz</button>
+            <button data-lbmode="daily">📅 Today</button>
+          </div>
+          <ol id="lb-list" class="lb"></ol>
+          <details class="howto">
+            <summary>How to play</summary>
+            <ul>
+              <li>Pick any card. Harder cards are worth more: <b>$100</b> True/False · <b>$200</b> Identification · <b>$300</b> Diagrams &amp; multi-select · <b>$400</b> Calculations &amp; short explanations · <b>$500</b> Full explanations.</li>
+              <li>Correct = you bank the card's value. Each wrong try <b>halves</b> the card. After 3 wrong tries it's worth $0 and the answer is revealed.</li>
+              <li>True/False and 2-option cards: one try only.</li>
+              <li>Watch the timer. Running out of time counts as a wrong try.</li>
+              <li>One hidden <b>DOUBLE DOWN</b> card per board doubles its value!</li>
+              <li>🔥 <b>Streaks:</b> 3 correct cards in a row = +10% bonus, 5+ in a row = +25%. A $0 card resets the streak.</li>
+              <li>🛟 <b>Lifelines</b> (once per game): <b>50/50</b> removes wrong options, <b>Hint</b> gives a clue, <b>+30s</b> adds time.</li>
+              <li>💰 <b>Final Wager:</b> clear the board, then bet any part of your bank on one last $500 question.</li>
+              <li>🏅 Earn <b>badges</b>, play the <b>Daily Challenge</b> every day, and practise the questions you missed.</li>
+              <li>Explanations are auto-marked by checking for the key science ideas.</li>
+            </ul>
+          </details>
+          <a class="live-link" href="live.html">📺 Teacher: open the Live Classroom screen</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOARD -->
+  <section id="scr-board" class="screen">
+    <header class="hud">
+      <div class="who"><span class="brand">🧠 Brain <b>Bank</b></span><span id="hud-name"></span><small id="hud-mode"></small></div>
+      <div class="bank"><small>BANK</small><b id="hud-score">$0</b></div>
+      <div class="hud-btns">
+        <span id="hud-streak" class="pill streak" hidden></span>
+        <span id="hud-left" class="pill"></span>
+        <button class="icon" id="btn-music" title="Music">🎵</button>
+        <button class="icon" id="btn-mute" title="Sound effects">🔊</button>
+        <button class="btn small ghost" id="btn-quit" title="Quit to home without saving">🏠 Home</button>
+        <button class="btn small ghost" id="btn-finish">Finish</button>
+      </div>
+    </header>
+    <div id="board" class="board"></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="scr-results" class="screen">
+    <div class="notebook res-card"><div class="spiral"></div><div class="paper">
+      <p class="kicker" id="res-kind"></p>
+      <h1 id="res-title">Great job!</h1>
+      <div class="res-score" id="res-score">$0</div>
+      <div class="res-badge" id="res-badge"></div>
+      <div class="res-badges" id="res-badges"></div>
+      <div class="res-stats" id="res-stats"></div>
+      <div id="res-rank" class="res-rank"></div>
+      <div id="res-topics" class="res-topics"></div>
+      <h3>Review your answers</h3>
+      <div id="res-missed" class="missed"></div>
+      <div class="play-row">
+        <button class="btn big gold" id="btn-again">Play again</button>
+        <button class="btn big teal" id="btn-share">📤 Share score</button>
+        <button class="btn big ghost" id="btn-practice">🔁 Practice my misses</button>
+        <button class="btn big ghost" id="btn-home">Home</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- BANK -->
+  <section id="scr-bank" class="screen">
+    <header class="hud">
+      <button class="btn small ghost" id="bank-back">← Home</button>
+      <div class="bank-title">📚 Question Bank <small id="bank-count"></small></div>
+      <span></span>
+    </header>
+    <div class="filters">
+      <input id="bank-search" placeholder="Search questions…">
+      <select id="bank-topic"></select>
+      <select id="bank-tier"><option value="">All values</option><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select>
+      <button class="btn small teal" id="bank-shuffle">🔀 Shuffle</button>
+    </div>
+    <div id="bank-list" class="bank-list"></div>
+  </section>
+</div>
+
+<!-- CARD MODAL -->
+<footer class="credit">
+  <span><b>Brain Bank</b> — <span class="by">by</span> <span class="sig">Nichzz</span></span>
+  <button id="coffee" class="coffee" type="button">☕ Buy me a coffee</button>
+</footer>
+
+<div id="modal" class="modal" hidden>
+  <div class="card-box" role="dialog" aria-modal="true">
+    <div class="card-head">
+      <button class="icon" id="c-home" title="Quit to Home" hidden>🏠</button>
+      <span class="chip prog" id="c-prog" hidden></span>
+      <span class="chip" id="c-topic"></span>
+      <span class="chip type" id="c-type"></span>
+      <span class="value" id="c-value"></span>
+    </div>
+    <div class="timer"><div id="c-timer"></div><span id="c-time"></span></div>
+    <div id="c-dd" class="dd" hidden>💥 DOUBLE DOWN! 💥</div>
+    <div class="lifelines" id="c-life">
+      <button class="life" data-life="fifty" title="Remove wrong options">✂️ 50/50</button>
+      <button class="life" data-life="hint" title="Get a clue">💡 Hint</button>
+      <button class="life" data-life="time" title="Add 30 seconds">⏳ +30s</button>
+    </div>
+    <div id="c-hint" class="c-hint" hidden></div>
+    <div class="q" id="c-q"></div>
+    <img id="c-img" class="qimg" alt="" hidden>
+    <div id="c-body" class="c-body"></div>
+    <div id="c-feedback" class="feedback" hidden></div>
+    <div class="c-actions">
+      <span class="tries" id="c-tries"></span>
+      <button class="btn ghost" id="c-forfeit">🏳️ Forfeit</button>
+      <button class="btn gold" id="c-submit">Submit</button>
+      <button class="btn teal" id="c-next" hidden>Continue →</button>
+    </div>
+  </div>
+</div>
+<div id="coffee-modal" class="modal" hidden>
+  <div class="coffee-box" role="dialog" aria-modal="true" aria-labelledby="coffee-h">
+    <button class="icon close" id="coffee-close" aria-label="Close">✕</button>
+    <h3 id="coffee-h">☕ Buy Nichzz a coffee</h3>
+    <p>Enjoying Brain Bank? Scan with GCash, Maya or any bank app via InstaPay.</p>
+    <img src="img/instapay-qr.png" alt="InstaPay QR code for Nichzz Dae" width="420" height="425">
+    <div class="payee">Nichzz Dae</div>
+    <small>InstaPay · Transfer fees may apply. Thank you! 💛</small>
+  </div>
+</div>
+<canvas id="confetti" class="confetti"></canvas>
+<div id="zoom" class="zoom" hidden><img alt=""></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="questions.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
