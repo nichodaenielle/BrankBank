@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "build:questions": "node tools/build-questions.js",
+    "check:questions": "node tools/build-questions.js --check"
   },
   "keywords": [],
   "author": "",

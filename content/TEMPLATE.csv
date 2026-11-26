@@ -1,0 +1,5 @@
+id,topic,tier,type,q,answer,acc,reject,choices,answers,why,img,src
+my-q1,gen,100,tf,True or False: A zygote is formed when sperm and egg fuse.,true,,,,,,Fertilisation produces a zygote.,,added
+my-q2,earth,200,mc,Which gas do plants absorb for photosynthesis?,1,,,Carbon dioxide|Oxygen|Nitrogen|Hydrogen,,Plants take in CO2 and release O2.,,added
+my-q3,plant,200,short,Plants store glucose as ________.,starch,starch|starchy,,,,,Iodine test turns blue-black with starch.,,added
+my-q4,body,300,multi,Which are parts of a flower? Select all that apply.,,,,Petal|Root|Sepal|Xylem,1|2|3,,,added

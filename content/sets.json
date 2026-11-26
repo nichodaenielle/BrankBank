@@ -1,0 +1,36 @@
+{
+  "sci-g8s1": {
+    "name": "Science",
+    "grade": 8,
+    "semester": 1,
+    "icon": "🧪",
+    "label": "🧬 Science · Grade 8 · Sem 1",
+    "topics": [
+      {
+        "id": "gen",
+        "name": "Genetics & Reproduction",
+        "icon": "🧬"
+      },
+      {
+        "id": "body",
+        "name": "Human Body & Health",
+        "icon": "🫘"
+      },
+      {
+        "id": "plant",
+        "name": "Plant Life",
+        "icon": "🌿"
+      },
+      {
+        "id": "earth",
+        "name": "Earth & Climate",
+        "icon": "🌋"
+      },
+      {
+        "id": "energy",
+        "name": "Energy & Matter",
+        "icon": "⚡"
+      }
+    ]
+  }
+}
