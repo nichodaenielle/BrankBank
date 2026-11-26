@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Brain Bank · Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+.adm-wrap{max-width:1100px;margin:0 auto}
+.adm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.adm-head h1{margin:0;font-size:1.6rem;color:var(--teal-d)}
+.adm-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.adm-filters input,.adm-filters select{padding:9px 12px;border-radius:10px;border:2px solid var(--teal);font-size:.95rem;background:#fff;font-family:inherit}
+.adm-filters input{flex:1;min-width:180px}
+.q-list{display:flex;flex-direction:column;gap:8px}
+.q-row{background:#fff;border:2px solid #e1dbc0;border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start}
+.q-row .q-main{flex:1;min-width:0}
+.q-row .q-top{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.q-row p{margin:0;font-weight:600;line-height:1.4}
+.q-row .q-id{font-size:.75rem;color:#999;font-weight:700}
+.chip.t100{background:#e6f4f0;color:var(--teal-d)}.chip.t200{background:#e3f0ff;color:#2b5cb8}.chip.t300{background:#fff3d6;color:#8a6d00}.chip.t400{background:#ffe9ec;color:#b03060}.chip.t500{background:#efe6ff;color:#5b3aa8}
+.ed-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ed-form .full{grid-column:1/-1}
+.ed-form label{display:block;font-weight:800;font-size:.85rem;margin-bottom:4px}
+.ed-form input,.ed-form select,.ed-form textarea{width:100%;padding:10px 12px;border:2px solid #cfc8a8;border-radius:10px;font-size:.95rem;font-family:inherit;background:#fff}
+.ed-form textarea{min-height:70px;resize:vertical}
+.ed-form input:focus,.ed-form select:focus,.ed-form textarea:focus{outline:none;border-color:var(--teal)}
+.ed-type{background:#fffbe8;border:2px dashed var(--gold);border-radius:12px;padding:12px}
+.ed-type h4{margin:0 0 8px;font-family:Fredoka;color:#8a6d00}
+.opt-list{display:flex;flex-direction:column;gap:6px}
+.opt-row{display:flex;gap:8px;align-items:center}
+.opt-row input[type=text]{flex:1}
+.opt-row .rm{border:0;background:#fde3e3;color:var(--red);border-radius:8px;width:30px;height:30px;font-weight:800}
+.add-opt{margin-top:6px}
+.kv-list{display:flex;flex-direction:column;gap:6px}
+.kv-row{display:grid;grid-template-columns:1fr 1fr 30px;gap:6px}
+.kv-row .rm{border:0;background:#fde3e3;color:var(--red);border-radius:8px;width:30px;height:30px;font-weight:800}
+.ed-acts{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;position:sticky;bottom:0;background:var(--paper);padding:10px 0}
+.login-card{max-width:380px;margin:12vh auto}
+.login-card .paper{padding:30px}
+.login-card h1{margin:.2em 0;color:var(--teal-d)}
+.err-msg{color:var(--red);font-weight:700;min-height:1.2em;margin-top:8px}
+.count-note{color:#667;font-weight:700;font-size:.9rem}
+@media(max-width:640px){.ed-form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="screen active" style="min-height:100vh">
+  <div class="adm-wrap">
+    <header class="adm-head">
+      <h1>🛠️ Question Admin</h1>
+      <div id="who-box" hidden><span class="count-note" id="q-count"></span> <button class="btn small ghost" id="btn-logout">Log out</button></div>
+    </header>
+
+    <div class="notebook login-card" id="login-card">
+      <div class="spiral"></div>
+      <div class="paper">
+        <h1>🛠️ Admin Login</h1>
+        <p class="tag">Teacher access to the question bank</p>
+        <label class="lbl" for="adm-pass">Admin password</label>
+        <input id="adm-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <p class="err-msg" id="login-err"></p>
+        <button class="btn big gold wide" id="btn-login">Log in</button>
+      </div>
+    </div>
+
+    <div id="dash" hidden>
+      <div class="notebook"><div class="spiral"></div><div class="paper">
+        <div class="adm-filters">
+          <input id="f-q" placeholder="🔍 Search questions…">
+          <select id="f-set"><option value="">All sets</option></select>
+          <select id="f-topic"><option value="">All topics</option></select>
+          <select id="f-tier"><option value="">All values</option><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select>
+          <select id="f-type"><option value="">All types</option></select>
+          <button class="btn teal" id="btn-new">＋ New question</button>
+        </div>
+        <div class="q-list" id="q-list"></div>
+      </div></div>
+    </div>
+
+    <div class="modal" id="ed-modal" hidden>
+      <div class="card-box" style="width:min(760px,100%)" role="dialog" aria-modal="true">
+        <div class="card-head"><span class="chip type" id="ed-kind">Question</span><span class="value" id="ed-title">Edit</span></div>
+        <div class="ed-form" id="ed-form"></div>
+        <div class="ed-acts">
+          <button class="btn ghost" id="ed-cancel">Cancel</button>
+          <button class="btn gold" id="ed-save">💾 Save question</button>
+        </div>
+        <p class="err-msg" id="ed-err"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="admin.js"></script>
+</body>
+</html>

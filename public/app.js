@@ -162,7 +162,7 @@ const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar
 let lbScope = S.mode, lbMode = 'game';
 
 /* ---------- sets (subject / grade / semester collections) ---------- */
-const SETS = window.SETS || {};
+let SETS = window.SETS || {};
 const setList = () => Object.values(SETS);
 const setById = id => SETS[id] || setList()[0];
 const setTopics = () => setById(S.set).topics;
@@ -1085,5 +1085,16 @@ function init() {
   window.addEventListener('beforeunload', e => { if (($('#scr-board').classList.contains('active') || $('#scr-word').classList.contains('active')) && S.log.length) { e.preventDefault(); e.returnValue = ''; } });
 }
 window.__sbq = { shortMatch, gradeExplain, norm, S, dailyQueue, manilaDay, WP, SETS, setTopics, setQuestions };
-init();
+async function boot() {
+  try {
+    const c = await getJSON('/api/content');
+    if (c && Array.isArray(c.questions) && c.questions.length && c.sets && Object.keys(c.sets).length) {
+      window.SETS = c.sets; window.QUESTIONS = c.questions; SETS = c.sets;
+      const first = Object.keys(c.sets)[0];
+      if (first) window.TOPICS = c.sets[first].topics;
+    }
+  } catch {}
+  init();
+}
+boot();
 })();

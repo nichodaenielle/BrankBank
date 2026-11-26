@@ -27,7 +27,133 @@ export class Leaderboard extends DurableObject {
       cls TEXT NOT NULL, key TEXT NOT NULL, name TEXT NOT NULL, avatar TEXT NOT NULL, kind TEXT NOT NULL,
       score INTEGER NOT NULL, answered INTEGER NOT NULL, correct INTEGER NOT NULL, streak INTEGER NOT NULL,
       done INTEGER NOT NULL, ts INTEGER NOT NULL, PRIMARY KEY (cls, key))`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS questions (
+      id TEXT PRIMARY KEY, qset TEXT NOT NULL, topic TEXT NOT NULL, tier INTEGER NOT NULL,
+      type TEXT NOT NULL, data TEXT NOT NULL)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS sets (id TEXT PRIMARY KEY, data TEXT NOT NULL)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, expires INTEGER NOT NULL)`);
     this.lastPost = new Map();
+  }
+
+  /* ---------- question content ---------- */
+  setsAll() {
+    return this.sql.exec('SELECT id, data FROM sets').toArray().map(r => ({ id: r.id, ...JSON.parse(r.data) }));
+  }
+  questionsAll(set = '') {
+    const rows = set
+      ? this.sql.exec('SELECT data FROM questions WHERE qset = ? ORDER BY topic, tier, id', set).toArray()
+      : this.sql.exec('SELECT data FROM questions ORDER BY qset, topic, tier, id').toArray();
+    return rows.map(r => JSON.parse(r.data));
+  }
+  upsertSet(s) {
+    this.sql.exec('INSERT INTO sets (id, data) VALUES (?,?) ON CONFLICT (id) DO UPDATE SET data=excluded.data',
+      s.id, JSON.stringify(s));
+  }
+  upsertQuestion(q) {
+    this.sql.exec(`INSERT INTO questions (id, qset, topic, tier, type, data) VALUES (?,?,?,?,?,?)
+      ON CONFLICT (id) DO UPDATE SET qset=excluded.qset, topic=excluded.topic, tier=excluded.tier, type=excluded.type, data=excluded.data`,
+      q.id, q.set, q.topic, q.tier, q.type, JSON.stringify(q));
+  }
+
+  validateQuestion(q) {
+    if (!q || typeof q !== 'object') return 'question must be an object';
+    if (!/^[a-z0-9][a-z0-9-]{1,40}$/i.test(q.id || '')) return 'id must be 2-41 chars: letters, numbers, dashes';
+    if (!['tf', 'mc', 'short', 'multi', 'label', 'blanks', 'order', 'explain'].includes(q.type)) return 'unknown type';
+    if (![100, 200, 300, 400, 500].includes(+q.tier)) return 'tier must be 100-500';
+    if (typeof q.q !== 'string' || q.q.trim().length < 3) return 'question text (q) required';
+    const set = this.sql.exec('SELECT data FROM sets WHERE id = ?', q.set).toArray()[0];
+    if (!set) return 'unknown set "' + q.set + '"';
+    const topics = JSON.parse(set.data).topics.map(t => t.id);
+    if (!topics.includes(q.topic)) return 'unknown topic "' + q.topic + '" for set ' + q.set;
+    const need = (cond, msg) => { if (!cond) throw new Error(msg); };
+    try {
+      switch (q.type) {
+        case 'tf': need(typeof q.answer === 'boolean', 'tf needs answer true/false'); break;
+        case 'mc': need(Array.isArray(q.choices) && q.choices.length >= 2 && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.choices.length, 'mc needs choices[] and valid answer index'); break;
+        case 'multi': need(Array.isArray(q.choices) && q.choices.length >= 2 && Array.isArray(q.answers) && q.answers.length && q.answers.every(i => Number.isInteger(i) && i >= 0 && i < q.choices.length), 'multi needs choices[] and answers[]'); break;
+        case 'short': need(typeof q.a === 'string' && q.a.trim(), 'short needs answer text (a)'); break;
+        case 'explain': need(typeof q.model === 'string' && q.model.trim() && Array.isArray(q.rubric) && q.rubric.length, 'explain needs model + rubric[]'); break;
+        case 'blanks': need(Array.isArray(q.fields) && q.fields.length, 'blanks needs fields[]'); break;
+        case 'label': need(Array.isArray(q.labels) && q.labels.length, 'label needs labels[]'); break;
+        case 'order': need(Array.isArray(q.steps) && q.steps.length >= 2, 'order needs steps[] (>=2)'); break;
+      }
+    } catch (e) { return e.message; }
+    return null;
+  }
+
+  async adminToken(request) {
+    const t = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!t) return false;
+    const row = this.sql.exec('SELECT expires FROM sessions WHERE token = ?', t).toArray()[0];
+    if (!row || row.expires < Date.now()) return false;
+    return true;
+  }
+
+  async admin(request, url) {
+    const p = url.pathname;
+    if (p === '/api/admin/login' && request.method === 'POST') {
+      let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      const pass = request.headers.get('x-bb-admin-pass') || this.env.ADMIN_PASSWORD;
+      if (!pass) return json({ error: 'admin not configured' }, 503);
+      if (b.password !== pass) return json({ error: 'wrong password' }, 401);
+      const token = crypto.randomUUID();
+      this.sql.exec('INSERT INTO sessions (token, expires) VALUES (?,?)', token, Date.now() + 12 * 3600e3);
+      return json({ token, expiresIn: 43200 });
+    }
+    if (url.pathname === '/api/content' && request.method === 'GET') {
+      const set = /^[a-z0-9-]+$/.test(url.searchParams.get('set') || '') ? url.searchParams.get('set') : '';
+      const sets = {};
+      for (const s of this.setsAll()) sets[s.id] = s;
+      return json({ sets, questions: this.questionsAll(set) });
+    }
+    if (!(await this.adminToken(request))) return json({ error: 'unauthorized — log in first' }, 401);
+    if (p === '/api/admin/logout' && request.method === 'POST') {
+      const t = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+      this.sql.exec('DELETE FROM sessions WHERE token = ?', t);
+      return json({ ok: true });
+    }
+    if (p === '/api/admin/questions' && request.method === 'GET') {
+      const set = /^[a-z0-9-]+$/.test(url.searchParams.get('set') || '') ? url.searchParams.get('set') : '';
+      return json({ questions: this.questionsAll(set) });
+    }
+    if (p === '/api/admin/questions' && request.method === 'POST') {
+      let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      return this.saveQuestion(b.question);
+    }
+    const one = p.match(/^\/api\/admin\/questions\/([^/]+)$/);
+    if (one && request.method === 'PUT') {
+      let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      if (decodeURIComponent(one[1]) !== (b.question && b.question.id)) return json({ error: 'id mismatch' }, 400);
+      return this.saveQuestion(b.question);
+    }
+    if (one && request.method === 'DELETE') {
+      this.sql.exec('DELETE FROM questions WHERE id = ?', decodeURIComponent(one[1]));
+      return json({ ok: true });
+    }
+    if (p === '/api/admin/import' && request.method === 'POST') {
+      let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+      let n = 0, bad = [];
+      for (const s of Object.values(b.sets || {})) { if (s && s.id) { this.upsertSet(s); n++; } }
+      for (const q of b.questions || []) {
+        const err = this.validateQuestion(q);
+        if (err) { bad.push(`${q.id || '?'}: ${err}`); continue; }
+        this.upsertQuestion(q); n++;
+      }
+      return json({ ok: true, imported: n, errors: bad.slice(0, 20) });
+    }
+    return json({ error: 'not found' }, 404);
+  }
+
+  saveQuestion(q) {
+    const err = this.validateQuestion(q);
+    if (err) return json({ error: err }, 400);
+    const set = this.sql.exec('SELECT data FROM sets WHERE id = ?', q.set).toArray()[0];
+    const meta = JSON.parse(set.data);
+    q.subject = meta.subject || meta.name.toLowerCase();
+    q.grade = meta.grade; q.semester = meta.semester;
+    q.level = q.level || (q.tier <= 200 ? 1 : q.tier === 300 ? 2 : q.tier === 400 ? 3 : 4);
+    this.upsertQuestion(q);
+    return json({ ok: true, question: q });
   }
 
   throttle(id, ms) {
@@ -68,6 +194,7 @@ export class Leaderboard extends DurableObject {
   async fetch(request) {
     const url = new URL(request.url), p = url.searchParams;
     const ip = request.headers.get('cf-connecting-ip') || 'x';
+    if (url.pathname === '/api/content' || url.pathname.startsWith('/api/admin/')) return this.admin(request, url);
     const qMode = MODES[p.get('mode')] ? p.get('mode') : 'game';
     const qDay = qMode === 'daily' ? (/^\d{4}-\d{2}-\d{2}$/.test(p.get('day') || '') ? p.get('day') : manilaDay()) : '';
 
@@ -138,8 +265,15 @@ export class Leaderboard extends DurableObject {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (['/api/leaderboard', '/api/sections', '/api/live'].includes(url.pathname))
-      return env.LB.get(env.LB.idFromName('global')).fetch(request);
+    if (['/api/leaderboard', '/api/sections', '/api/live', '/api/content'].includes(url.pathname) || url.pathname.startsWith('/api/admin/')) {
+      let req = request;
+      if (env.ADMIN_PASSWORD && url.pathname.startsWith('/api/admin/')) {
+        const headers = new Headers(request.headers);
+        headers.set('x-bb-admin-pass', env.ADMIN_PASSWORD);
+        req = new Request(request, { headers });
+      }
+      return env.LB.get(env.LB.idFromName('global')).fetch(req);
+    }
     if (url.pathname.startsWith('/api/')) return json({ error: 'not found' }, 404);
     return env.ASSETS.fetch(request);
   }
