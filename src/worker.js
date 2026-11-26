@@ -22,6 +22,8 @@ export class Leaderboard extends DurableObject {
     for (const col of ['avatar', 'cls', 'badges', 'day']) {
       try { this.sql.exec(`ALTER TABLE scores ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`); } catch {}
     }
+    try { this.sql.exec(`ALTER TABLE scores ADD COLUMN qset TEXT NOT NULL DEFAULT 'sci-g8s1'`); } catch {}
+    try { this.sql.exec(`ALTER TABLE live ADD COLUMN qset TEXT NOT NULL DEFAULT ''`); } catch {}
     this.sql.exec('CREATE INDEX IF NOT EXISTS idx_mode_score ON scores(mode, score DESC)');
     this.sql.exec(`CREATE TABLE IF NOT EXISTS live (
       cls TEXT NOT NULL, key TEXT NOT NULL, name TEXT NOT NULL, avatar TEXT NOT NULL, kind TEXT NOT NULL,
@@ -132,6 +134,17 @@ export class Leaderboard extends DurableObject {
       this.sql.exec('DELETE FROM sessions WHERE token = ?', t);
       return json({ ok: true });
     }
+    if (p === '/api/admin/scores' && request.method === 'DELETE') {
+      const name = String(url.searchParams.get('name') || '').trim();
+      const mode = MODES[url.searchParams.get('mode') || ''] ? url.searchParams.get('mode') : '';
+      const qset = url.searchParams.get('set') || '';
+      if (!name && !mode && !qset) return json({ error: 'provide a name, mode or set filter' }, 400);
+      const rows = this.sql.exec(
+        `SELECT id FROM scores WHERE (? = '' OR LOWER(name) = LOWER(?)) AND (? = '' OR mode = ?) AND (? = '' OR qset = ?)`,
+        name, name, mode, mode, qset, qset).toArray();
+      for (const r of rows) this.sql.exec('DELETE FROM scores WHERE id = ?', r.id);
+      return json({ ok: true, deleted: rows.length });
+    }
     if (p === '/api/admin/questions' && request.method === 'GET') {
       const set = /^[a-z0-9-]+$/.test(url.searchParams.get('set') || '') ? url.searchParams.get('set') : '';
       return json({ questions: this.questionsAll(set) });
@@ -216,31 +229,46 @@ export class Leaderboard extends DurableObject {
     return false;
   }
 
-  filtered(mode, cls, day) {
-    return [`SELECT * FROM scores WHERE mode = ? AND (? = '' OR cls = ?) AND (? = '' OR day = ?)`, [mode, cls, cls, day, day]];
+  validSet(id) {
+    return /^[a-z0-9][a-z0-9-]{0,30}$/.test(id || '') && !!this.sql.exec('SELECT id FROM sets WHERE id = ?', id).toArray()[0];
+  }
+  setMeta(id) {
+    const r = this.sql.exec('SELECT data FROM sets WHERE id = ?', id).toArray()[0];
+    return r ? JSON.parse(r.data) : null;
+  }
+  scoreCap(mode, qset) {
+    if (mode !== 'game') return MODES[mode];
+    const meta = this.setMeta(qset);
+    const n = meta && Array.isArray(meta.topics) ? meta.topics.length : 5;
+    return Math.max(1, n) * 1600;
   }
 
-  top(mode, cls = '', day = '', limit = 50) {
-    const [q, args] = this.filtered(mode, cls, day);
+  filtered(mode, cls, day, qset = '') {
+    return [`SELECT * FROM scores WHERE mode = ? AND (? = '' OR cls = ?) AND (? = '' OR day = ?) AND (? = '' OR qset = ?)`,
+      [mode, cls, cls, day, day, qset, qset]];
+  }
+
+  top(mode, cls = '', day = '', limit = 50, qset = '') {
+    const [q, args] = this.filtered(mode, cls, day, qset);
     return this.sql.exec(
       `SELECT name, avatar, badges, cls, score, correct, total, ms, ts FROM (
          SELECT *, ROW_NUMBER() OVER (PARTITION BY key ORDER BY score DESC, ms ASC) rn FROM (${q})
        ) WHERE rn = 1 ORDER BY score DESC, ms ASC LIMIT ?`, ...args, limit).toArray();
   }
 
-  rankOf(mode, key, cls = '', day = '') {
-    const [q, args] = this.filtered(mode, cls, day);
+  rankOf(mode, key, cls = '', day = '', qset = '') {
+    const [q, args] = this.filtered(mode, cls, day, qset);
     const best = this.sql.exec(`SELECT MAX(score) s FROM (${q}) WHERE key = ?`, ...args, key).one().s;
     const better = this.sql.exec(`SELECT COUNT(*) c FROM (SELECT key, MAX(score) s FROM (${q}) GROUP BY key) WHERE s > ?`, ...args, best).one().c;
     const players = this.sql.exec(`SELECT COUNT(DISTINCT key) c FROM (${q})`, ...args).one().c;
     return { rank: better + 1, best, players };
   }
 
-  sections(mode, day = '') {
+  sections(mode, day = '', qset = '') {
     return this.sql.exec(
       `SELECT cls, COUNT(*) players, SUM(s) total, MAX(s) best, CAST(AVG(s) AS INTEGER) avg FROM (
-         SELECT cls, key, MAX(score) s FROM scores WHERE mode = ? AND cls <> '' AND (? = '' OR day = ?) GROUP BY cls, key
-       ) GROUP BY cls ORDER BY total DESC LIMIT 30`, mode, day, day).toArray();
+         SELECT cls, key, MAX(score) s FROM scores WHERE mode = ? AND cls <> '' AND (? = '' OR day = ?) AND (? = '' OR qset = ?) GROUP BY cls, key
+       ) GROUP BY cls ORDER BY total DESC LIMIT 30`, mode, day, day, qset, qset).toArray();
   }
 
   async fetch(request) {
@@ -249,34 +277,36 @@ export class Leaderboard extends DurableObject {
     if (url.pathname === '/api/content' || url.pathname.startsWith('/api/admin/')) return this.admin(request, url);
     const qMode = MODES[p.get('mode')] ? p.get('mode') : 'game';
     const qDay = qMode === 'daily' ? (/^\d{4}-\d{2}-\d{2}$/.test(p.get('day') || '') ? p.get('day') : manilaDay()) : '';
+    const qSet = /^[a-z0-9][a-z0-9-]{0,30}$/.test(p.get('set') || '') ? p.get('set') : '';
 
     if (url.pathname === '/api/sections' && request.method === 'GET')
-      return json({ mode: qMode, day: qDay, sections: this.sections(qMode, qDay) });
+      return json({ mode: qMode, day: qDay, set: qSet, sections: this.sections(qMode, qDay, qSet) });
 
     if (url.pathname === '/api/live') {
       if (request.method === 'GET') {
         const cls = cleanCls(p.get('cls'));
         if (!cls) return json({ error: 'class code required' }, 400);
         const players = this.sql.exec(
-          'SELECT name, avatar, kind, score, answered, correct, streak, done, ts FROM live WHERE cls = ? AND ts > ? ORDER BY score DESC, ts ASC LIMIT 100',
-          cls, Date.now() - 3 * 3600e3).toArray();
-        return json({ cls, now: Date.now(), players });
+          'SELECT name, avatar, kind, score, answered, correct, streak, done, ts, qset FROM live WHERE cls = ? AND ts > ? AND (? = \'\' OR qset = ?) ORDER BY score DESC, ts ASC LIMIT 100',
+          cls, Date.now() - 3 * 3600e3, qSet, qSet).toArray();
+        return json({ cls, now: Date.now(), set: qSet, players });
       }
       if (request.method === 'POST') {
         let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
         const cls = cleanCls(b.cls), name = cleanName(b.name), kind = MODES[b.kind] ? b.kind : 'game';
+        const qset = this.validSet(b.set) ? b.set : 'sci-g8s1';
         const score = int(b.score), answered = int(b.answered), correct = int(b.correct), streak = int(b.streak);
         if (!cls || !name) return json({ error: 'class code and name required' }, 400);
-        if (![score, answered, correct, streak].every(Number.isFinite) || score < 0 || score > MODES[kind] ||
+        if (![score, answered, correct, streak].every(Number.isFinite) || score < 0 || score > this.scoreCap(kind, qset) ||
             answered < 0 || answered > 60 || correct < 0 || correct > answered || streak < 0 || streak > 60)
           return json({ error: 'invalid' }, 400);
         const key = name.toLowerCase();
         if (this.throttle('live|' + ip + '|' + cls + '|' + key, 700)) return json({ error: 'slow down' }, 429);
         const now = Date.now();
-        this.sql.exec(`INSERT INTO live (cls, key, name, avatar, kind, score, answered, correct, streak, done, ts) VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        this.sql.exec(`INSERT INTO live (cls, key, name, avatar, kind, score, answered, correct, streak, done, ts, qset) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
           ON CONFLICT (cls, key) DO UPDATE SET name=excluded.name, avatar=excluded.avatar, kind=excluded.kind, score=excluded.score,
-          answered=excluded.answered, correct=excluded.correct, streak=excluded.streak, done=excluded.done, ts=excluded.ts`,
-          cls, key, name, cleanAvatar(b.avatar), kind, score, answered, correct, streak, b.done ? 1 : 0, now);
+          answered=excluded.answered, correct=excluded.correct, streak=excluded.streak, done=excluded.done, ts=excluded.ts, qset=excluded.qset`,
+          cls, key, name, cleanAvatar(b.avatar), kind, score, answered, correct, streak, b.done ? 1 : 0, now, qset);
         if (Math.random() < 0.02) this.sql.exec('DELETE FROM live WHERE ts < ?', now - 12 * 3600e3);
         return json({ ok: true });
       }
@@ -284,16 +314,18 @@ export class Leaderboard extends DurableObject {
     }
 
     if (request.method === 'GET')
-      return json({ mode: qMode, day: qDay, entries: this.top(qMode, cleanCls(p.get('cls')), qDay) });
+      return json({ mode: qMode, day: qDay, set: qSet, entries: this.top(qMode, cleanCls(p.get('cls')), qDay, 50, qSet) });
 
     if (request.method === 'POST') {
       let b; try { b = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
       const mode = b.mode;
       if (!MODES[mode]) return json({ error: 'bad mode' }, 400);
+      if (b.set !== undefined && !this.validSet(b.set)) return json({ error: 'unknown set' }, 400);
+      const qset = b.set || 'sci-g8s1';
       const name = cleanName(b.name);
       if (!name) return json({ error: 'name required' }, 400);
       const score = int(b.score), correct = int(b.correct), total = int(b.total), ms = int(b.ms);
-      if (![score, correct, total, ms].every(Number.isFinite) || score < 0 || score > MODES[mode] ||
+      if (![score, correct, total, ms].every(Number.isFinite) || score < 0 || score > this.scoreCap(mode, qset) ||
           total < 1 || total > 60 || correct < 0 || correct > total || ms < 0 || (mode === 'daily' && total > 5))
         return json({ error: 'invalid score' }, 400);
       const now = Date.now();
@@ -304,10 +336,10 @@ export class Leaderboard extends DurableObject {
       }
       const key = name.toLowerCase(), cls = cleanCls(b.cls);
       if (this.throttle(ip + '|' + key, 4000)) return json({ error: 'too many submissions, wait a few seconds' }, 429);
-      this.sql.exec('INSERT INTO scores (name, key, mode, score, correct, total, ms, ts, avatar, cls, badges, day) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-        name, key, mode, score, correct, total, ms, now, cleanAvatar(b.avatar), cls, cleanBadges(b.badges), day);
-      const out = { ok: true, ...this.rankOf(mode, key, '', day), entries: this.top(mode, '', day) };
-      if (cls) out.classRank = this.rankOf(mode, key, cls, day);
+      this.sql.exec('INSERT INTO scores (name, key, mode, score, correct, total, ms, ts, avatar, cls, badges, day, qset) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        name, key, mode, score, correct, total, ms, now, cleanAvatar(b.avatar), cls, cleanBadges(b.badges), day, qset);
+      const out = { ok: true, set: qset, ...this.rankOf(mode, key, '', day, qset), entries: this.top(mode, '', day, 50, qset) };
+      if (cls) out.classRank = this.rankOf(mode, key, cls, day, qset);
       return json(out);
     }
     return json({ error: 'method not allowed' }, 405);

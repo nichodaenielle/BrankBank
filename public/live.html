@@ -61,7 +61,10 @@ a{color:#ffd34d}
   const money = n => '$' + Math.round(n).toLocaleString();
   const medal = i => ['🥇', '🥈', '🥉'][i] || i + 1;
   const KIND = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily', word: 'Word Puzzle' };
-  let cls = (new URLSearchParams(location.search).get('code') || localStorage.getItem('sbq_live_cls') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
+  const qp = new URLSearchParams(location.search);
+  let cls = (qp.get('code') || localStorage.getItem('sbq_live_cls') || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
+  const qset = /^[a-z0-9][a-z0-9-]{0,30}$/.test(qp.get('set') || '') ? qp.get('set') : '';
+  const setQs = qset ? '&set=' + encodeURIComponent(qset) : '';
   let prev = {}, t1, t2;
   $('#host').textContent = location.host;
   $('#f').onsubmit = e => { e.preventDefault(); cls = $('#cls').value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16); start(); };
@@ -71,7 +74,7 @@ a{color:#ffd34d}
     <span class="sc">${money(p.score)}</span></div>`).join('');
   async function live() {
     try {
-      const r = await (await fetch('/api/live?cls=' + encodeURIComponent(cls), { cache: 'no-store' })).json();
+      const r = await (await fetch('/api/live?cls=' + encodeURIComponent(cls) + setQs, { cache: 'no-store' })).json();
       const list = r.players || [];
       $('#live').innerHTML = list.length ? rows(list) : '<div class="empty">Waiting for players… ask students to enter class code <b>' + esc(cls) + '</b>.</div>';
       const playing = list.filter(p => !p.done).length, ans = list.reduce((a, p) => a + p.answered, 0), cor = list.reduce((a, p) => a + p.correct, 0);
@@ -82,7 +85,7 @@ a{color:#ffd34d}
   async function best() {
     for (const [mode, el] of [['game', '#best'], ['pop', '#bestpop']]) {
       try {
-        const r = await (await fetch(`/api/leaderboard?mode=${mode}&cls=${encodeURIComponent(cls)}`, { cache: 'no-store' })).json();
+        const r = await (await fetch(`/api/leaderboard?mode=${mode}&cls=${encodeURIComponent(cls)}${setQs}`, { cache: 'no-store' })).json();
         $(el).innerHTML = (r.entries || []).length ? rows(r.entries.slice(0, 10), true) : '<div class="empty">No scores yet.</div>';
       } catch {}
     }
@@ -90,7 +93,7 @@ a{color:#ffd34d}
   function start() {
     if (!cls) return;
     localStorage.setItem('sbq_live_cls', cls); $('#cls').value = cls; $('#code').textContent = cls; $('#join').hidden = false;
-    history.replaceState(null, '', '?code=' + cls);
+    history.replaceState(null, '', '?code=' + cls + (qset ? '&set=' + qset : ''));
     clearInterval(t1); clearInterval(t2); prev = {};
     live(); best(); t1 = setInterval(live, 3000); t2 = setInterval(best, 15000);
   }

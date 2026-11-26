@@ -209,7 +209,7 @@ const badgeIcons = b => (Array.isArray(b) ? b : String(b || '').split(',')).filt
 function livePing(done) {
   if (S.mode !== 'comp' || !S.cls) return;
   const L = S.log;
-  livePing.body = JSON.stringify({ cls: S.cls, name: S.name, avatar: S.avatar, kind: S.kind, score: S.score, answered: L.length, correct: L.filter(l => l.ok).length, streak: S.streak, done: !!done });
+  livePing.body = JSON.stringify({ cls: S.cls, name: S.name, avatar: S.avatar, kind: S.kind, score: S.score, answered: L.length, correct: L.filter(l => l.ok).length, streak: S.streak, done: !!done, set: S.set });
   if (livePing.t) return;
   const send = () => { livePing.t = 0; livePing.last = Date.now(); fetch('/api/live', { method: 'POST', headers: { 'content-type': 'application/json' }, body: livePing.body }).catch(() => {}); };
   const wait = 1000 - (Date.now() - (livePing.last || 0));
@@ -243,7 +243,7 @@ async function loadLB() {
   if (lbScope === 'solo') return renderLB(localLB(lbMode), lbMode);
   if (lbScope === 'cls' && !S.cls) { ol.innerHTML = '<li class="empty">Type a class code (Competition mode) to see your class ranking. 🏫</li>'; return; }
   ol.innerHTML = '<li class="empty">Loading…</li>';
-  const qs = 'mode=' + lbMode + (lbMode === 'daily' ? '&day=' + manilaDay() : '') + (lbScope === 'cls' ? '&cls=' + encodeURIComponent(S.cls) : '');
+  const qs = 'mode=' + lbMode + (lbMode === 'daily' ? '&day=' + manilaDay() : '') + '&set=' + encodeURIComponent(S.set) + (lbScope === 'cls' ? '&cls=' + encodeURIComponent(S.cls) : '');
   try {
     if (lbScope === 'sec') { const r = await getJSON('/api/sections?' + qs); if (n === lbReq) renderSections(r.sections); }
     else { const r = await getJSON('/api/leaderboard?' + qs); if (n === lbReq) renderLB(r.entries, lbMode); }
@@ -785,7 +785,7 @@ async function endGame() {
   const sorted = S.log.slice().sort((a, b) => a.ok - b.ok);
   $('#res-missed').innerHTML = sorted.length ? sorted.map(l => `<div class="m ${l.ok ? 'ok' : ''}"><small>${l.ok ? '✅ ' : '❌ '}${signed(l.earned)} · ${topicIcon(l.q.topic)} ${l.final ? '💰 Final Wager ' + money(l.wager) : money(l.tier)} · ${TYPE_NAME[l.q.type]}</small><p>${esc(l.q.q)}</p><p class="a">${answerHTML(l.q)}</p></div>`).join('') : '<p>No cards answered.</p>';
   show('scr-results');
-  const entry = { name: S.name, avatar: S.avatar, mode: S.kind, score: S.score, correct, total: Math.max(total, 1), ms, badges: earnedB, cls: S.mode === 'comp' ? S.cls : '', day: S.kind === 'daily' ? S.day : '' };
+  const entry = { name: S.name, avatar: S.avatar, mode: S.kind, score: S.score, correct, total: Math.max(total, 1), ms, badges: earnedB, cls: S.mode === 'comp' ? S.cls : '', day: S.kind === 'daily' ? S.day : '', set: S.set };
   const rk = $('#res-rank');
   if (!total) { rk.textContent = 'No cards answered — score not recorded.'; return; }
   livePing(true);
