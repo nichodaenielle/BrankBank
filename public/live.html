@@ -23,7 +23,7 @@ button{font:inherit;font-weight:800;font-size:1.1rem;border:0;border-radius:12px
 .panel h2{font-family:Fredoka;margin:0 0 10px;font-size:1.5rem}
 .row{display:grid;grid-template-columns:56px 50px 1fr auto;align-items:center;gap:10px;background:#fffdf5;color:#263238;border-radius:14px;padding:10px 14px;margin-bottom:8px;transition:transform .3s}
 .row .pos{font-family:Fredoka;font-size:1.6rem;text-align:center}
-.row .av{font-size:2rem;text-align:center}
+.row .av{font-size:2rem;text-align:center;display:flex;align-items:center;justify-content:center}.row .av svg{width:52px;height:52px}.mini .row .av svg{width:36px;height:36px}
 .row .nm{font-weight:800;font-size:1.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .row .nm small{display:block;font-weight:700;color:#778;font-size:.85rem}
 .row .sc{font-family:Fredoka;font-weight:700;font-size:1.8rem;color:#3c8d3f}
@@ -53,6 +53,7 @@ a{color:#ffd34d}
   <div class="panel mini"><h2>🏆 Class best · Bank Board</h2><div id="best"></div><h2 style="margin-top:14px">⏱️ Class best · Pop Quiz</h2><div id="bestpop"></div></div>
 </div>
 <footer>Brain Bank — by <span class="sig">Nichzz</span> · <a href="/">Back to game</a></footer>
+<script src="/avatar.js"></script>
 <script>
 (() => {
   const $ = s => document.querySelector(s);
@@ -65,7 +66,7 @@ a{color:#ffd34d}
   $('#host').textContent = location.host;
   $('#f').onsubmit = e => { e.preventDefault(); cls = $('#cls').value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16); start(); };
   const rows = (list, mini) => list.map((p, i) => `<div class="row ${p.done ? 'done' : ''} ${!mini && prev[p.name] !== undefined && prev[p.name] < p.score ? 'up' : ''}">
-    <span class="pos">${medal(i)}</span><span class="av">${esc(p.avatar || '🙂')}</span>
+    <span class="pos">${medal(i)}</span><span class="av">${Avatar.html(p.avatar)}</span>
     <span class="nm">${esc(p.name)}<small>${mini ? `${p.correct}/${p.total} correct` : `${KIND[p.kind] || ''} · ${p.correct}/${p.answered} correct${p.streak >= 2 ? ' · 🔥' + p.streak : ''} · ${p.done ? '✅ finished' : '🎮 playing'}`}</small></span>
     <span class="sc">${money(p.score)}</span></div>`).join('');
   async function live() {

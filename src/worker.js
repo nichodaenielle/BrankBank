@@ -6,7 +6,8 @@ const json = (data, status = 200) =>
 
 const cleanName = n => String(n || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20);
 const cleanCls = c => String(c || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 16);
-const cleanAvatar = a => [...String(a || '').replace(/[\u0000-\u001f<>&"'A-Za-z0-9]/g, '')].slice(0, 4).join('').slice(0, 12);
+const cleanAvatar = a => /^b\d{1,2}f\d{1,2}s\d{1,2}c\d{1,2}a\d{1,2}$/.test(a) ? a : cleanEmoji(a);
+const cleanEmoji = a => [...String(a || '').replace(/[\u0000-\u001f<>&"'A-Za-z0-9]/g, '')].slice(0, 4).join('').slice(0, 12);
 const cleanBadges = b => (Array.isArray(b) ? b : []).filter(x => /^[a-z0-9]{2,12}$/.test(x)).slice(0, 12).join(',');
 const manilaDay = (t = Date.now()) => new Date(t + 8 * 3600e3).toISOString().slice(0, 10);
 const int = v => Math.round(Number(v));

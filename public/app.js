@@ -7,7 +7,6 @@ const TIME = { 100: 20, 200: 30, 300: 60, 400: 90, 500: 150 };
 const TYPE_NAME = { tf: 'True / False', mc: 'Multiple choice', short: 'Identification', multi: 'Select all', label: 'Diagram labeling', blanks: 'Fill in / Solve', order: 'Sequence', explain: 'Explain' };
 const MAX = { game: 8000, pop: 3000, daily: 1500 };
 const KIND_NAME = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily Challenge' };
-const AVATARS = ['🧑‍🔬', '👩‍🔬', '👨‍🔬', '🧠', '🦉', '🦊', '🐯', '🐼', '🐸', '🦄', '🚀', '🌱', '🌋', '⚡', '🧬', '🔭', '🐙', '🦖', '🐝', '🌟'];
 const BADGES = {
   sharp: ['🎯', 'Sharpshooter', '10+ cards, all correct on the first try'],
   fire: ['🔥', 'On Fire', '5 correct cards in a row'],
@@ -159,7 +158,7 @@ function gradeExplain(input, q) {
 const parseNum = s => { const m = String(s).replace(/,/g, '.').replace(/\s/g, '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : NaN; };
 
 /* ---------- state ---------- */
-const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: store.get('avatar', AVATARS[0]), cls: store.get('cls', ''), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
+const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
 let lbScope = S.mode, lbMode = 'game';
 
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('active', s.id === id)); window.scrollTo(0, 0); }
@@ -203,7 +202,7 @@ function renderLB(list, mode) {
   if (!list.length) { ol.innerHTML = '<li class="empty">No scores yet. Be the first! 🚀</li>'; return; }
   const medal = i => ['🥇', '🥈', '🥉'][i] || (i + 1);
   ol.innerHTML = list.slice(0, 50).map((e, i) => `<li class="${e.name.toLowerCase() === me ? 'me' : ''}">
-    <span class="pos">${medal(i)}</span><span class="av">${esc(e.avatar || '🙂')}</span>
+    <span class="pos">${medal(i)}</span><span class="av">${Avatar.html(e.avatar)}</span>
     <span class="nm">${esc(e.name)} <span class="rank-title">${titleFor(e.score, mode)}</span>${e.cls && lbScope !== 'cls' ? `<span class="cls-tag">${esc(e.cls)}</span>` : ''}<small>${e.correct}/${e.total} correct · ${fmtTime(e.ms)} <span class="bdg">${badgeIcons(e.badges)}</span></small></span>
     <span class="sc">${money(e.score)}</span></li>`).join('');
 }
@@ -238,14 +237,31 @@ function refreshWelcome() {
   $('#my-badges').innerHTML = got.length ? '<b>My badges</b> ' + got.map(b => `<span title="${BADGES[b][1]}: ${BADGES[b][2]}">${BADGES[b][0]}</span>`).join('') : '';
 }
 
+/* ---------- avatar builder ---------- */
+let avTab = 'b';
+function initAvatarBuilder() {
+  const box = $('#avatars'), btn = $('#avatar-btn');
+  const save = () => { store.set('avatar', S.avatar); btn.innerHTML = Avatar.svg(S.avatar); $('#avb-prev').innerHTML = Avatar.svg(S.avatar); };
+  const draw = () => {
+    $$('#avb-tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === avTab));
+    const o = Avatar.decode(S.avatar), part = Avatar.PARTS.find(p => p[0] === avTab);
+    $('#avb-opts').innerHTML = part[3].map((label, i) => `<button type="button" data-i="${i}" class="${o[avTab] === i ? 'on' : ''}" title="${label}">${Avatar.svg(Avatar.encode({ ...o, [avTab]: i }))}<small>${label}</small></button>`).join('');
+    $$('#avb-opts button').forEach(b => b.onclick = () => { S.avatar = Avatar.encode({ ...Avatar.decode(S.avatar), [avTab]: +b.dataset.i }); save(); draw(); tone([660, 880], 0.06, 'triangle', 0.05, 0.1); });
+  };
+  box.innerHTML = `<div class="avb-top"><div class="avb-prev" id="avb-prev"></div><div class="avb-act"><b>Build your scientist</b><button type="button" class="btn small" id="avb-rand">🎲 Random</button><button type="button" class="btn small teal" id="avb-done">✅ Done</button></div></div>
+    <div class="avb-tabs" id="avb-tabs">${Avatar.PARTS.map(([k, name, icon]) => `<button type="button" data-k="${k}">${icon} ${name}</button>`).join('')}</div><div class="avb-opts" id="avb-opts"></div>`;
+  $$('#avb-tabs button').forEach(b => b.onclick = () => { avTab = b.dataset.k; draw(); });
+  $('#avb-rand').onclick = () => { S.avatar = Avatar.random(); save(); draw(); tone([660, 880], 0.06, 'triangle', 0.05, 0.1); };
+  $('#avb-done').onclick = () => { box.hidden = true; };
+  btn.onclick = () => { box.hidden = !box.hidden; if (!box.hidden) draw(); };
+  save();
+}
+
 /* ---------- welcome ---------- */
 function initWelcome() {
   $('#name').value = S.name;
   const setMode = m => { S.mode = m; store.set('mode', m); $$('.mode').forEach(b => b.classList.toggle('on', b.dataset.mode === m)); $('#cls-row').hidden = m === 'solo'; };
-  const avBtn = $('#avatar-btn'); avBtn.textContent = S.avatar;
-  $('#avatars').innerHTML = AVATARS.map(a => `<button type="button" class="${a === S.avatar ? 'on' : ''}">${a}</button>`).join('');
-  avBtn.onclick = () => { $('#avatars').hidden = !$('#avatars').hidden; };
-  $$('#avatars button').forEach(b => b.onclick = () => { S.avatar = b.textContent; store.set('avatar', S.avatar); avBtn.textContent = S.avatar; $$('#avatars button').forEach(x => x.classList.toggle('on', x === b)); $('#avatars').hidden = true; });
+  initAvatarBuilder();
   $('#cls').value = S.cls;
   $('#cls').onchange = () => { S.cls = cleanCls($('#cls').value); $('#cls').value = S.cls; store.set('cls', S.cls); if (lbScope === 'cls' || lbScope === 'sec') loadLB(); };
   setMode(S.mode);
@@ -286,7 +302,7 @@ function startGame(kind) {
   S.kind = kind; S.score = 0; S.log = []; S.start = Date.now(); S.practice = false;
   S.streak = 0; S.bestStreak = 0; S.life = { fifty: 1, hint: 1, time: 1 }; S.lifeUsed = 0; S.wager = null; S.review = null;
   S.day = manilaDay(); S.dailyReplay = replay;
-  $('#hud-name').textContent = S.avatar + ' ' + S.name;
+  $('#hud-name').innerHTML = Avatar.html(S.avatar) + ' ' + esc(S.name);
   $('#hud-mode').textContent = (S.mode === 'comp' ? '🌐 Competition' + (S.cls ? ' · 🏫 ' + S.cls : '') : '📱 Individual Challenge') + ' · ' + KIND_NAME[kind] + (replay ? ' (practice)' : '');
   updateScore(false);
   const used = new Set();
@@ -352,7 +368,7 @@ function startReview(ids) {
   if (!ids.length) return toast('No missed questions to practise. 🎉');
   musicStop(); stopTimer();
   S.log = []; S.review = { queue: shuffle(ids), mastered: 0, total: ids.length, last: null };
-  $('#hud-name').textContent = S.avatar + ' ' + (S.name || 'Player');
+  $('#hud-name').innerHTML = Avatar.html(S.avatar) + ' ' + esc(S.name || 'Player');
   $('#hud-mode').textContent = '🔁 Review my misses · practice (not scored)';
   $('#hud-streak').hidden = true;
   show('scr-board'); drawReview();
@@ -747,7 +763,7 @@ async function shareCard() {
   g.textAlign = 'center';
   T('🧠 Brain Bank', 135, '700 66px Fredoka, sans-serif', '#1f5c51');
   T('The Science Showdown · ' + KIND_NAME[r.kind], 225, '700 36px Nunito, sans-serif', '#667');
-  T(S.avatar, 380, '130px serif', '#000');
+  const avImg = await Avatar.image(S.avatar); if (avImg) g.drawImage(avImg, 455, 250, 170, 170);
   T(S.name, 475, '700 62px Fredoka, sans-serif', '#223');
   T(money(r.score), 630, '700 150px Fredoka, sans-serif', '#d89a00');
   T(`🎖️ ${r.title} · ${r.correct}/${r.total} correct · ${Math.round(r.correct / Math.max(r.total, 1) * 100)}%`, 715, '800 38px Nunito, sans-serif', '#2f7a6b');

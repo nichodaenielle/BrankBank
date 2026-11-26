@@ -229,10 +229,23 @@ button{font:inherit;cursor:pointer}
 /* ---------- enhancements ---------- */
 .name-row{display:flex;gap:8px;align-items:stretch}
 .name-row input{flex:1;min-width:0}
-.avatar-btn{width:54px;flex:0 0 54px;font-size:1.7rem;border:2px solid var(--teal);border-radius:12px;background:#fff;cursor:pointer}
-.avatars{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:8px;background:#fff;border:2px dashed #cfc6a3;border-radius:12px;padding:6px}
-.avatars button{font-size:1.4rem;border:0;background:none;border-radius:8px;padding:4px 0;cursor:pointer}
-.avatars button.on,.avatars button:hover{background:#fff1b8}
+.avatar-btn{width:58px;flex:0 0 58px;padding:2px;display:flex;align-items:center;justify-content:center;font-size:1.7rem;border:2px solid var(--teal);border-radius:12px;background:#fff;cursor:pointer}
+.avatar-btn svg{width:50px;height:50px}.avatar-btn:hover{background:#fff8dd}
+.avatars{margin-top:8px;background:#fff;border:2px dashed #cfc6a3;border-radius:14px;padding:10px}
+.avb-top{display:flex;align-items:center;gap:12px}
+.avb-prev{width:110px;height:110px;flex:0 0 110px;background:radial-gradient(#fffbe8,#f3ecd2);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.avb-prev svg{width:100px;height:100px;animation:bob 2.4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px) rotate(-2deg)}}
+.avb-act{display:flex;flex-direction:column;gap:6px;flex:1}.avb-act b{color:var(--teal);font-family:Fredoka,sans-serif}
+.avb-tabs{display:flex;gap:4px;margin:10px 0 6px;overflow-x:auto}
+.avb-tabs button{flex:1;white-space:nowrap;border:2px solid #cfe3dd;background:#f4fbf8;border-radius:999px;padding:5px 8px;font-weight:800;color:#2f5d55;cursor:pointer;font-size:.85rem}
+.avb-tabs button.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.avb-opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px;max-height:220px;overflow-y:auto}
+.avb-opts button{border:2px solid transparent;background:#faf7ec;border-radius:12px;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;font-size:.7rem;color:#556}
+.avb-opts button svg{width:52px;height:52px}
+.avb-opts button.on{border-color:#f5b82e;background:#fff1b8}.avb-opts button:hover{background:#fff6d4}
+#hud-name svg{width:26px;height:26px;vertical-align:middle}
+.lb li .av svg{width:34px;height:34px;display:block;margin:auto}
 .my-badges{margin-top:6px;font-size:1.15rem;min-height:0}
 .my-badges b{font-size:.8rem;color:#667;margin-right:4px;vertical-align:middle}
 .cls-row[hidden]{display:none}
@@ -281,7 +294,7 @@ button{font:inherit;cursor:pointer}
 #scr-results .play-row{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 .confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:85}
 @media (max-width:600px){
-  .avatars{grid-template-columns:repeat(5,1fr)}
+  .avb-opts{grid-template-columns:repeat(4,1fr)}.avb-prev{width:90px;height:90px;flex-basis:90px}.avb-prev svg{width:82px;height:82px}
   .lb li{grid-template-columns:28px 26px 1fr auto;gap:6px}
   .life{min-width:0;font-size:.78rem;padding:6px 4px}
   .wager-bet{font-size:2.4rem}

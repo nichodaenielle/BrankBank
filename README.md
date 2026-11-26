@@ -14,7 +14,7 @@ A game-show style Grade 8 Semester 1 science reviewer for Cloudflare Workers. By
 
 ## Features
 Auto-marked answers (keyword rubrics for explanations), halving penalty per wrong try, streak bonuses,
-lifelines (50/50, Hint, +30s), badges, avatars, game-show music, shareable score cards, class codes with
+lifelines (50/50, Hint, +30s), badges, a custom avatar builder (body, face, shoes, color, aura), game-show music, shareable score cards, class codes with
 section rankings, a shared online leaderboard (Competition) and a device-only leaderboard (Individual Challenge).
 
 ## Project layout
