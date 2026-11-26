@@ -80,6 +80,7 @@ button{font:inherit;cursor:pointer}
 .p2 .ps,.p3 .ps{color:#26303d}
 .pod .pt{display:inline-block;margin-top:4px;background:rgba(255,255,255,.78);border-radius:999px;padding:2px 10px;font-size:.7rem;font-weight:800;color:#5b3aa8;white-space:nowrap}
 .pod.me .block{outline:3px solid var(--red);outline-offset:2px}
+.lb-note{margin:0 0 10px;font-size:.8rem;color:#8a7a55;font-weight:700;text-align:center;font-style:italic}
 @media(max-width:560px){.pod .av svg{width:64px;height:64px}.p1 .av svg{width:84px;height:84px}.pod .block{padding-top:26px}.p1 .block{min-height:120px}.p2 .block{min-height:92px}.p3 .block{min-height:70px}}
 /* HUD */
 .hud{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--paper);border:3px solid var(--purple);border-radius:14px;padding:8px 14px;max-width:1300px;margin:0 auto 14px;box-shadow:0 8px 20px rgba(0,0,0,.3)}

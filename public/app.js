@@ -227,8 +227,10 @@ const PODIUM = [
   { medal: '🥉', title: 'The Contender', cls: 'p3' },
 ];
 function renderLB(list, mode) {
-  const pod = $('#lb-podium'), ol = $('#lb-list'), me = (S.name || '').toLowerCase();
+  const pod = $('#lb-podium'), note = $('#lb-note'), ol = $('#lb-list'), me = (S.name || '').toLowerCase();
   pod.innerHTML = '';
+  note.hidden = mode !== 'all';
+  if (mode === 'all') note.textContent = '⭐ Overall = your best Bank Board + best Pop Quiz + best Daily + best Word Puzzle, all added up. Ties go to more correct answers, then faster time.';
   if (!list.length) { ol.innerHTML = '<li class="empty">No scores yet. Be the first! 🚀</li>'; return; }
   const medal = i => ['🥇', '🥈', '🥉'][i] || (i + 1);
   const row = (e, i) => `<li class="${e.name.toLowerCase() === me ? 'me' : ''}">
@@ -250,8 +252,8 @@ function renderLB(list, mode) {
 }
 const fmtTime = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; };
 function renderSections(list) {
-  const pod = $('#lb-podium'), ol = $('#lb-list');
-  pod.innerHTML = '';
+  const pod = $('#lb-podium'), note = $('#lb-note'), ol = $('#lb-list');
+  pod.innerHTML = ''; note.hidden = true;
   if (!list.length) { ol.innerHTML = '<li class="empty">No class scores yet. Enter a class code and play in Competition mode! 🏫</li>'; return; }
   ol.innerHTML = list.map((e, i) => `<li class="${e.cls === S.cls ? 'me' : ''}"><span class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="av">🏫</span>
     <span class="nm">${esc(e.cls)}<small>${e.players} player${e.players > 1 ? 's' : ''} · avg ${money(e.avg)} · best ${money(e.best)}</small></span><span class="sc">${money(e.total)}</span></li>`).join('');
