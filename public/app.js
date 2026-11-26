@@ -159,7 +159,7 @@ const parseNum = s => { const m = String(s).replace(/,/g, '.').replace(/\s/g, ''
 
 /* ---------- state ---------- */
 const S = { mode: store.get('mode', 'comp'), name: store.get('name', ''), avatar: (a => Avatar.valid(a) ? a : Avatar.random())(store.get('avatar', '')), cls: store.get('cls', ''), set: store.get('set', 'sci-g8s1'), pqTopic: store.get('pqTopic', ''), pqLevel: store.get('pqLevel', ''), kind: 'game', score: 0, board: [], queue: [], log: [], start: 0, card: null, practice: false, streak: 0, bestStreak: 0, life: {}, lifeUsed: 0, wager: null, review: null, day: '', dailyReplay: false, res: null, lastMisses: [] };
-let lbScope = S.mode, lbMode = 'game';
+let lbScope = S.mode, lbMode = 'all';
 
 /* ---------- sets (subject / grade / semester collections) ---------- */
 let SETS = window.SETS || {};
