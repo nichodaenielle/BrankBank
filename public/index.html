@@ -57,11 +57,6 @@
           <div class="name-row"><button class="avatar-btn" id="avatar-btn" type="button" title="Customize avatar" aria-label="Customize avatar"></button><input id="name" maxlength="20" placeholder="e.g. Juan D." autocomplete="nickname"></div>
           <div class="avatars" id="avatars" hidden></div>
           <div id="my-badges" class="my-badges"></div>
-          <div class="lbl">Choose your challenge</div>
-          <div class="modes">
-            <button class="mode on" data-mode="comp"><b>🌐 Competition</b><small>Scores go on the shared online leaderboard</small></button>
-            <button class="mode" data-mode="solo"><b>📱 Individual Challenge</b><small>Scores saved on this device only</small></button>
-          </div>
           <div class="cls-row" id="set-row"><label class="lbl" for="set-sel">📚 Question set</label><select id="set-sel"></select></div>
           <div class="pq-row" id="pq-row">
             <label class="lbl" for="pq-topic">🎯 Game focus <small>(optional — applies to Pop Quiz &amp; Word Puzzle)</small></label>
@@ -69,6 +64,11 @@
               <select id="pq-topic"><option value="">All topics</option></select>
               <select id="pq-level"><option value="">Any difficulty</option><option value="1">Level 1 · Easy</option><option value="2">Level 2 · Medium</option><option value="3">Level 3 · Hard</option><option value="4">Level 4 · Expert</option></select>
             </div>
+          </div>
+          <div class="lbl">Choose your challenge</div>
+          <div class="modes">
+            <button class="mode on" data-mode="comp"><b>🌐 Competition</b><small>Scores go on the shared online leaderboard</small></button>
+            <button class="mode" data-mode="solo"><b>📱 Individual Challenge</b><small>Scores saved on this device only</small></button>
           </div>
           <div class="cls-row" id="cls-row"><label class="lbl" for="cls">🏫 Class code <small>(optional — joins your class leaderboard &amp; live screen)</small></label><input id="cls" maxlength="16" placeholder="e.g. 8-RIZAL" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>
           <div class="play-row">
@@ -99,6 +99,7 @@
             <button data-lbmode="daily">📅 Today</button>
             <button data-lbmode="word">🧩 Puzzle</button>
           </div>
+          <div id="lb-podium"></div>
           <ol id="lb-list" class="lb"></ol>
           <details class="howto">
             <summary>How to play</summary>

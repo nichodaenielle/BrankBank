@@ -73,11 +73,9 @@
 .err-msg{color:var(--red);font-weight:700;min-height:1.2em;margin-top:8px}
 .count-note{color:#667;font-weight:700;font-size:.9rem}
 .hint-note{font-size:.8rem;color:#8a7a55;font-weight:600}
-.emoji-pick{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-.emoji-pick button{font-size:1.25rem;background:#fffbe8;border:2px solid #e1dbc0;border-radius:10px;padding:3px 8px;cursor:pointer;line-height:1.2;transition:transform .1s,border-color .15s}
-.emoji-pick button:hover{transform:translateY(-2px);border-color:var(--teal)}
-.topic-item{margin-bottom:10px}
-.topic-item .emoji-pick{margin:4px 0 0 52px}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;max-height:320px;overflow:auto}
+.emoji-grid button{font-size:1.6rem;background:#fffbe8;border:2px solid #e1dbc0;border-radius:10px;padding:6px 0;cursor:pointer;line-height:1;transition:transform .1s,border-color .15s}
+.emoji-grid button:hover{transform:scale(1.15);border-color:var(--teal)}
 @media(max-width:640px){.ed-form{grid-template-columns:1fr}.topic-row{grid-template-columns:44px 1fr 30px}.topic-row input.tid{grid-column:2/4}}
 </style>
 </head>
@@ -145,7 +143,7 @@
     <div class="card-head"><span class="chip">Set</span><span class="value" id="set-title">New set</span></div>
     <div class="ed-form" id="set-form">
       <div><label>Set ID <span class="hint-note">(auto-generated from name — you can ignore this)</span></label><input id="s-id" placeholder="auto"></div>
-      <div><label>Icon <span class="hint-note">(tap an emoji below)</span></label><input id="s-icon" maxlength="4" placeholder="📚"><div class="emoji-pick" id="s-icon-pick"></div></div>
+      <div><label>Icon <span class="hint-note">(tap to pick)</span></label><input id="s-icon" maxlength="4" placeholder="📚" readonly style="cursor:pointer;background:#fffbe8"></div>
       <div class="full"><label>Name</label><input id="s-name" placeholder="e.g. Mathematics"></div>
       <div><label>Grade</label><input id="s-grade" type="number" min="1" max="12" placeholder="7"></div>
       <div><label>Semester</label><input id="s-semester" type="number" min="1" max="3" placeholder="1"></div>
@@ -165,6 +163,15 @@
     <p class="err-msg" id="set-err"></p>
   </div>
 </div>
+<!-- EMOJI PICKER -->
+<div class="modal" id="emoji-modal" hidden>
+  <div class="card-box" style="width:min(480px,100%)" role="dialog" aria-modal="true">
+    <div class="card-head"><span class="chip">Pick an icon</span></div>
+    <div class="emoji-grid" id="emoji-grid"></div>
+    <div class="ed-acts"><button class="btn ghost" id="em-cancel">Cancel</button></div>
+  </div>
+</div>
+
 <!-- CONFIRM -->
 <div class="modal" id="cf-modal" hidden>
   <div class="card-box" style="width:min(420px,100%)" role="alertdialog" aria-modal="true">

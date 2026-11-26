@@ -221,18 +221,37 @@ async function postGlobal(entry) {
   if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
   return j;
 }
+const PODIUM = [
+  { medal: '🥇', title: 'The Tycoon', cls: 'p1' },
+  { medal: '🥈', title: 'The Professor', cls: 'p2' },
+  { medal: '🥉', title: 'The Contender', cls: 'p3' },
+];
 function renderLB(list, mode) {
-  const ol = $('#lb-list'), me = (S.name || '').toLowerCase();
+  const pod = $('#lb-podium'), ol = $('#lb-list'), me = (S.name || '').toLowerCase();
+  pod.innerHTML = '';
   if (!list.length) { ol.innerHTML = '<li class="empty">No scores yet. Be the first! 🚀</li>'; return; }
   const medal = i => ['🥇', '🥈', '🥉'][i] || (i + 1);
-  ol.innerHTML = list.slice(0, 50).map((e, i) => `<li class="${e.name.toLowerCase() === me ? 'me' : ''}">
+  const row = (e, i) => `<li class="${e.name.toLowerCase() === me ? 'me' : ''}">
     <span class="pos">${medal(i)}</span><span class="av">${Avatar.html(e.avatar)}</span>
     <span class="nm">${esc(e.name)} <span class="rank-title">${titleFor(e.score, mode)}</span>${e.cls && lbScope !== 'cls' ? `<span class="cls-tag">${esc(e.cls)}</span>` : ''}<small>${e.correct}/${e.total} correct · ${fmtTime(e.ms)} <span class="bdg">${badgeIcons(e.badges)}</span></small></span>
-    <span class="sc">${money(e.score)}</span></li>`).join('');
+    <span class="sc">${money(e.score)}</span></li>`;
+  const top = list.slice(0, 3);
+  if (top.length) {
+    pod.innerHTML = `<div class="podium">${[1, 0, 2].map(i => top[i] && (() => {
+      const p = PODIUM[i], e = top[i];
+      return `<div class="pod ${p.cls}${e.name.toLowerCase() === me ? ' me' : ''}">
+        <div class="av"><span class="medal">${p.medal}</span>${Avatar.html(e.avatar, 120)}</div>
+        <div class="block"><div class="pn">${esc(e.name)}</div><div class="ps">${money(e.score)}</div><div class="pt">${p.medal} ${p.title}</div></div>
+      </div>`;
+    })()).join('')}</div>`;
+  }
+  const rest = list.slice(3, 50);
+  ol.innerHTML = rest.length ? rest.map((e, i) => row(e, i + 3)).join('') : '<li class="empty">The podium is set — can you knock someone off it? 🎯</li>';
 }
 const fmtTime = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + 'm ' + String(s % 60).padStart(2, '0') + 's'; };
 function renderSections(list) {
-  const ol = $('#lb-list');
+  const pod = $('#lb-podium'), ol = $('#lb-list');
+  pod.innerHTML = '';
   if (!list.length) { ol.innerHTML = '<li class="empty">No class scores yet. Enter a class code and play in Competition mode! 🏫</li>'; return; }
   ol.innerHTML = list.map((e, i) => `<li class="${e.cls === S.cls ? 'me' : ''}"><span class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="av">🏫</span>
     <span class="nm">${esc(e.cls)}<small>${e.players} player${e.players > 1 ? 's' : ''} · avg ${money(e.avg)} · best ${money(e.best)}</small></span><span class="sc">${money(e.total)}</span></li>`).join('');

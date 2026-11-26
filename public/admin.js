@@ -26,13 +26,12 @@ const COMMON_FIELDS = [
 
 const EMOJIS = ['📚', '🔢', '🧮', '📐', '📏', '🔬', '🧪', '🧬', '🌍', '🗺️', '🌱', '🌋', '⚡', '🔥', '❄️', '🌊', '☀️', '🌙', '❤️', '🧠', '💡', '🏛️', '🎨', '🎵', '🎬', '⚽', '🏀', '📖', '✏️', '🧲', '🔭', '🦴', '🫀', '🌾', '🐾', '🚀', '💻', '📊', '🧭', '🎯', '🏆'];
 
-function renderEmojiPick(el, input) {
-  el.innerHTML = EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
-  el.querySelectorAll('button').forEach(b => b.onclick = () => {
-    input.value = b.textContent;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
+let emojiTarget = null;
+function openEmojiPick(input) {
+  emojiTarget = input;
+  $('emoji-modal').hidden = false;
 }
+function closeEmojiPick() { $('emoji-modal').hidden = true; emojiTarget = null; }
 
 let TOKEN = localStorage.getItem('bb_admin_token') || null;
 let SETS = {};
@@ -413,15 +412,12 @@ function renderSetTopics() {
   const counts = topicCounts();
   const sid = $('s-id').value || setEditing.id || '';
   $('s-topics').innerHTML = (setEditing.topics || []).map((t, i) => `
-    <div class="topic-item" data-i="${i}">
     <div class="topic-row" data-i="${i}">
-      <input class="ic" data-k="icon" value="${esc(t.icon || '')}" maxlength="4" placeholder="🔢">
+      <input class="ic" data-k="icon" value="${esc(t.icon || '')}" maxlength="4" placeholder="🔢" readonly style="cursor:pointer;background:#fffbe8">
       <input class="name" data-k="name" value="${esc(t.name || '')}" placeholder="Topic name">
       <input class="tid" data-k="id" value="${esc(t.id || '')}" placeholder="auto" readonly>
       <button class="rm" data-t="${i}">×</button>
       <span class="tq">${counts[sid + '|' + t.id] || 0} questions</span>
-    </div>
-    <div class="emoji-pick">${EMOJIS.map(e => `<button type="button">${e}</button>`).join('')}</div>
     </div>`).join('');
   $('s-topics-hint').textContent = `(${(setEditing.topics || []).length})`;
   document.querySelectorAll('#s-topics .topic-row').forEach(row => {
@@ -435,13 +431,7 @@ function renderSetTopics() {
       }
     });
     row.querySelector('.rm').onclick = () => { setEditing.topics.splice(i, 1); renderSetTopics(); };
-  });
-  document.querySelectorAll('#s-topics .topic-item').forEach(item => {
-    const icInput = item.querySelector('.topic-row .ic');
-    item.querySelectorAll('.emoji-pick button').forEach(b => b.onclick = () => {
-      icInput.value = b.textContent;
-      icInput.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+    row.querySelector('.ic').onclick = () => openEmojiPick(row.querySelector('.ic'));
   });
 }
 $('s-addt').onclick = () => { setEditing.topics.push({ id: '', name: '', icon: '' }); renderSetTopics(); };
@@ -537,7 +527,17 @@ function confirmDialog(msg, yesLabel = 'Delete') {
 }
 
 /* ---------- init ---------- */
-renderEmojiPick($('s-icon-pick'), $('s-icon'));
+$('emoji-grid').innerHTML = EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
+$('emoji-grid').querySelectorAll('button').forEach(b => b.onclick = () => {
+  if (emojiTarget) {
+    emojiTarget.value = b.textContent;
+    emojiTarget.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  closeEmojiPick();
+});
+$('em-cancel').onclick = closeEmojiPick;
+$('emoji-modal').onclick = e => { if (e.target === $('emoji-modal')) closeEmojiPick(); };
+$('s-icon').onclick = () => openEmojiPick($('s-icon'));
 $('btn-login').onclick = login;
 $('adm-pass').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 $('btn-logout').onclick = logout;
