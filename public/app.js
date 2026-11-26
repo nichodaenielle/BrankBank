@@ -5,7 +5,7 @@ const $$ = s => [...document.querySelectorAll(s)];
 const TIERS = [100, 200, 300, 400, 500];
 const TIME = { 100: 20, 200: 30, 300: 60, 400: 90, 500: 150 };
 const TYPE_NAME = { tf: 'True / False', mc: 'Multiple choice', short: 'Identification', multi: 'Select all', label: 'Diagram labeling', blanks: 'Fill in / Solve', order: 'Sequence', explain: 'Explain', word: 'Crossword' };
-const MAX = { game: 8000, pop: 3000, daily: 1500, word: 3000 };
+const MAX = { game: 8000, pop: 3000, daily: 1500, word: 6000 };
 const KIND_NAME = { game: 'Bank Board', pop: 'Pop Quiz', daily: 'Daily Challenge', word: 'Word Puzzle' };
 const BADGES = {
   sharp: ['🎯', 'Sharpshooter', '10+ cards, all correct on the first try'],
@@ -910,9 +910,13 @@ function buildCrossword(vocab, want = 10, maxW = 13, maxH = 13) {
 }
 const wordValue = w => Math.min(500, Math.round((100 + 30 * (w.length - 3)) / 10) * 10);
 const wpCells = wd => [...wd.w].map((_, i) => WP.cells.get(wpKey(wd.r + (wd.dir === 'd' ? i : 0), wd.c + (wd.dir === 'a' ? i : 0))));
+const wordLevel = w => { const v = wordValue(w); return v <= 200 ? 1 : v <= 300 ? 2 : v <= 400 ? 3 : 4; };
 function startPuzzle() {
+  const vocab = setWords().filter(w => (!S.pqTopic || w[1] === S.pqTopic) && (!S.pqLevel || wordLevel(w[0]) === +S.pqLevel));
+  if (!vocab.length) { toast('⚠️ No crossword words match your focus filters — try All topics / Any difficulty.'); return; }
+  const cw = buildCrossword(vocab);
+  if (!cw || !cw.words.length) { toast('⚠️ Not enough words to build a crossword for this set yet.'); return; }
   S.kind = 'word'; S.score = 0; S.log = []; S.start = Date.now(); S.practice = false; S.streak = 0; S.bestStreak = 0; S.lifeUsed = 0; S.wager = null; S.review = null; S.card = null;
-  const cw = buildCrossword(setWords());
   WP.words = cw.words.map(p => ({ ...p, base: wordValue(p.w), value: wordValue(p.w), tries: 0, status: 'open' }));
   WP.cells = new Map(); WP.last = Date.now(); WP.cur = null;
   WP.words.forEach((wd, idx) => [...wd.w].forEach((ch, i) => {

@@ -168,7 +168,7 @@ function renderEditor() {
   $('ed-err').textContent = '';
 
   const head = `
-    <div><label>ID <span class="hint-note">(auto-generated — you can ignore this)</span></label><input id="e-id" value="${esc(q.id || '')}" ${editingNew ? '' : 'disabled style="background:#eee"'}></div>
+    <div><label>ID <span class="hint-note">(auto-generated — unique, read-only)</span></label><input id="e-id" value="${esc(q.id || '')}" readonly></div>
     <div><label>Set</label><select id="e-set">${Object.entries(SETS).map(([id, s]) => `<option value="${esc(id)}" ${id === q.set ? 'selected' : ''}>${esc(s.label || s.name)}</option>`).join('')}</select></div>
     <div><label>Topic</label><select id="e-topic"></select></div>
     <div><label>Value</label><select id="e-tier">${[100, 200, 300, 400, 500].map(t => `<option value="${t}" ${t === q.tier ? 'selected' : ''}>$${t}</option>`).join('')}</select></div>
@@ -369,7 +369,7 @@ function renderSets() {
 }
 
 function openSetEditor(s, id) {
-  setEditing = s ? JSON.parse(JSON.stringify(s)) : { id: '', name: '', grade: 7, semester: 1, icon: '📚', subject: '', label: '', topics: [{ id: '', name: '', icon: '' }] };
+  setEditing = s ? JSON.parse(JSON.stringify(s)) : { id: '', name: '', grade: 7, semester: 1, icon: '📚', subject: '', label: '', topics: [{ id: '', name: '', icon: '' }], isNew: true };
   topicTouched = {};
   setIdTouched = !!s;
   $('s-delete').hidden = !s;
@@ -379,6 +379,7 @@ function openSetEditor(s, id) {
   $('set-err').style.display = 'none';
   $('s-id').value = s ? id : '';
   $('s-id').disabled = !!s;
+  $('s-id').readOnly = !s;
   $('s-icon').value = s ? (s.icon || '') : '';
   $('s-name').value = s ? (s.name || '') : '';
   $('s-grade').value = s ? s.grade : '';
@@ -403,7 +404,7 @@ function renderSetTopics() {
     <div class="topic-row" data-i="${i}">
       <input class="ic" data-k="icon" value="${esc(t.icon || '')}" maxlength="4" placeholder="🔢">
       <input class="name" data-k="name" value="${esc(t.name || '')}" placeholder="Topic name">
-      <input class="tid" data-k="id" value="${esc(t.id || '')}" placeholder="topic-id">
+      <input class="tid" data-k="id" value="${esc(t.id || '')}" placeholder="auto" readonly>
       <button class="rm" data-t="${i}">×</button>
       <span class="tq">${counts[sid + '|' + t.id] || 0} questions</span>
     </div>`).join('');
@@ -413,42 +414,65 @@ function renderSetTopics() {
     row.querySelectorAll('input').forEach(inp => inp.oninput = () => {
       const k = inp.dataset.k;
       setEditing.topics[i][k] = inp.value;
-      if (k === 'name' && !topicTouched[i]) {
-        const slug = slugify(inp.value);
-        setEditing.topics[i].id = slug;
-        row.querySelector('.tid').value = slug;
+      if (k === 'name') {
+        setEditing.topics[i].id = uniqueTopicId(inp.value, i);
+        row.querySelector('.tid').value = setEditing.topics[i].id;
       }
-      if (k === 'id') topicTouched[i] = true;
     });
     row.querySelector('.rm').onclick = () => { setEditing.topics.splice(i, 1); renderSetTopics(); };
   });
 }
 $('s-addt').onclick = () => { setEditing.topics.push({ id: '', name: '', icon: '' }); renderSetTopics(); };
 
+/* auto-generated, uniqueness-guaranteed ids */
+function pickSetId(base, grade, sem) {
+  base = slugify(base);
+  if (!base) return '';
+  const cands = [base, `${base}-g${grade || 'x'}s${sem || 'x'}`];
+  for (let i = 2; i < 99; i++) cands.push(`${base}-${i}`);
+  return cands.find(c => /^[a-z0-9][a-z0-9-]{1,30}$/.test(c) && !SETS[c]) || `${base}-${Date.now().toString(36)}`;
+}
+function refreshSetId() {
+  if (setIdTouched || !setEditing.isNew) return;
+  const id = pickSetId($('s-name').value, $('s-grade').value, $('s-semester').value);
+  $('s-id').value = id; setEditing.id = id; renderSetTopics();
+}
+function uniqueTopicId(name, selfIdx) {
+  const base = slugify(name) || 'topic';
+  const used = new Set((setEditing.topics || []).map((t, j) => j !== selfIdx ? t.id : '').filter(Boolean));
+  let c = base, n = 2;
+  while (used.has(c)) c = `${base}-${n++}`;
+  return c;
+}
+
 $('s-id').addEventListener('input', () => { setIdTouched = true; setEditing.id = $('s-id').value.trim().toLowerCase(); renderSetTopics(); });
 $('s-icon').addEventListener('input', syncLabel);
-$('s-name').addEventListener('input', () => {
-  if (!setIdTouched) {
-    const slug = slugify($('s-name').value);
-    if (slug) { $('s-id').value = slug; setEditing.id = slug; renderSetTopics(); }
-  }
-  syncLabel();
-});
-$('s-grade').addEventListener('input', syncLabel);
-$('s-semester').addEventListener('input', syncLabel);
+$('s-name').addEventListener('input', () => { refreshSetId(); syncLabel(); });
+$('s-grade').addEventListener('input', () => { refreshSetId(); syncLabel(); });
+$('s-semester').addEventListener('input', () => { refreshSetId(); syncLabel(); });
 $('s-label').addEventListener('input', () => { $('s-label').dataset.touched = '1'; setEditing.label = $('s-label').value; });
 
 $('s-cancel').onclick = () => $('set-modal').hidden = true;
 $('s-save').onclick = async () => {
   $('set-err').textContent = '';
   $('set-err').style.display = 'none';
+  const seenT = new Set();
+  const topics = (setEditing.topics || []).filter(t => t.name).map(t => {
+    const base = slugify(t.id) || slugify(t.name) || 'topic';
+    let id = base, n = 2;
+    while (seenT.has(id)) id = `${base}-${n++}`;
+    seenT.add(id);
+    return { id, name: t.name.trim(), icon: (t.icon || '').trim() };
+  });
+  let id = $('s-id').value.trim().toLowerCase();
+  if (!SETS[id] && setEditing.isNew) id = pickSetId(id || $('s-name').value, +$('s-grade').value, +$('s-semester').value);
   const set = {
-    id: $('s-id').value.trim().toLowerCase(),
+    id,
     name: $('s-name').value.trim(),
     grade: +$('s-grade').value, semester: +$('s-semester').value,
     icon: $('s-icon').value.trim() || '📚', subject: slugify($('s-name').value) || 'general',
     label: $('s-label').value.trim(),
-    topics: (setEditing.topics || []).filter(t => t.name && t.id).map(t => ({ id: slugify(t.id) || slugify(t.name), name: t.name.trim(), icon: (t.icon || '').trim() })),
+    topics,
   };
   if (!set.id || !set.name || !set.grade || !set.topics.length) { $('set-err').textContent = 'ID, name, grade and at least one topic are required'; $('set-err').style.display = 'block'; return; }
   // warn if topics were renamed/removed while questions reference them
