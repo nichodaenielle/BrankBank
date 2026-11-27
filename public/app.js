@@ -860,10 +860,17 @@ async function shareCard() {
   T('Can you beat me? ' + location.host, 920, '700 30px Nunito, sans-serif', '#889');
   g.textAlign = 'right'; g.font = '600 30px Nunito, sans-serif'; g.fillStyle = '#fff'; g.fillText('Brain Bank — by', 600, 1038);
   g.textAlign = 'left'; g.font = '52px Sig, cursive'; g.fillText('Nichzz', 612, 1042);
-  const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
+  let blob = null;
+  try { blob = await new Promise(res => cv.toBlob(res, 'image/png')); } catch {}
+  if (!blob || !blob.size) { toast('⚠️ Could not create the score card — try again.'); return; }
   const file = new File([blob], 'brain-bank-score.png', { type: 'image/png' });
+  const text = `I banked ${money(r.score)} in Brain Bank! 🧠`;
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: 'Brain Bank', text: `I banked ${money(r.score)} in Brain Bank! 🧠 ${location.origin}` }); return; }
+    try { await navigator.share({ files: [file], title: 'Brain Bank', text }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Brain Bank', text, url: location.origin }); return; }
     catch (e) { if (e.name === 'AbortError') return; }
   }
   const url = URL.createObjectURL(blob);
