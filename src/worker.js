@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 
-const MODES = { game: 25000, pop: 6000, daily: 3000, word: 8000 };
+const MODES = { game: 25000, pop: 8000, daily: 4000, word: 10000 };
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -240,7 +240,7 @@ export class Leaderboard extends DurableObject {
     if (mode !== 'game') return MODES[mode];
     const meta = this.setMeta(qset);
     const n = meta && Array.isArray(meta.topics) ? meta.topics.length : 5;
-    return Math.max(1, n) * 4500;
+    return Math.max(1, n) * 4000 + 2000;
   }
 
   filtered(mode, cls, day, qset = '') {
@@ -315,7 +315,7 @@ export class Leaderboard extends DurableObject {
         const score = int(b.score), answered = int(b.answered), correct = int(b.correct), streak = int(b.streak);
         if (!cls || !name) return json({ error: 'class code and name required' }, 400);
         if (![score, answered, correct, streak].every(Number.isFinite) || score < 0 || score > this.scoreCap(kind, qset) ||
-            answered < 0 || answered > 200 || correct < 0 || correct > answered || streak < 0 || streak > 60)
+            answered < 0 || answered > 500 || correct < 0 || correct > answered || streak < 0 || streak > 500)
           return json({ error: 'invalid' }, 400);
         const key = name.toLowerCase();
         if (this.throttle('live|' + ip + '|' + cls + '|' + key, 700)) return json({ error: 'slow down' }, 429);
@@ -343,7 +343,7 @@ export class Leaderboard extends DurableObject {
       if (!name) return json({ error: 'name required' }, 400);
       const score = int(b.score), correct = int(b.correct), total = int(b.total), ms = int(b.ms);
       if (![score, correct, total, ms].every(Number.isFinite) || score < 0 || score > this.scoreCap(mode, qset) ||
-          total < 1 || total > 200 || correct < 0 || correct > total || ms < 0 || (mode === 'daily' && total > 5))
+          total < 1 || total > 500 || correct < 0 || correct > total || ms < 0 || (mode === 'daily' && total > 5))
         return json({ error: 'invalid score' }, 400);
       const now = Date.now();
       let day = '';
