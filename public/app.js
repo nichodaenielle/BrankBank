@@ -241,9 +241,11 @@ function renderLB(list, mode) {
   if (top.length) {
     pod.innerHTML = `<div class="podium">${[1, 0, 2].map(i => top[i] && (() => {
       const p = PODIUM[i], e = top[i];
+      const pcls = e.cls && lbScope !== 'cls' ? `<span class="cls-tag">${esc(e.cls)}</span>` : '';
+      const pbdg = badgeIcons(e.badges);
       return `<div class="pod ${p.cls}${e.name.toLowerCase() === me ? ' me' : ''}">
         <div class="av"><span class="medal">${p.medal}</span>${Avatar.html(e.avatar, 120)}</div>
-        <div class="block"><div class="pn">${esc(e.name)}</div><div class="ps">${money(e.score)}</div><div class="pt">${p.medal} ${p.title}</div></div>
+        <div class="block"><div class="pn">${esc(e.name)}</div>${pcls ? `<div class="pcls">${pcls}</div>` : ''}<div class="ps">${money(e.score)}</div><div class="pt">${p.medal} ${p.title}</div>${pbdg ? `<div class="pbdg bdg">${pbdg}</div>` : ''}</div>
       </div>`;
     })()).join('')}</div>`;
   }

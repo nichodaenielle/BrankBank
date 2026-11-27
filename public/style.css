@@ -79,6 +79,10 @@ button{font:inherit;cursor:pointer}
 .pod .ps{font-family:Fredoka;font-weight:700;font-size:1.2rem}
 .p2 .ps,.p3 .ps{color:#26303d}
 .pod .pt{display:inline-block;margin-top:4px;background:rgba(255,255,255,.78);border-radius:999px;padding:2px 10px;font-size:.7rem;font-weight:800;color:#5b3aa8;white-space:nowrap}
+.pod .pcls{margin-top:2px}
+.pod .pcls .cls-tag{margin-left:0}
+.pod .pbdg{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 5px;margin-top:5px;font-size:1.05rem;line-height:1.25}
+.pod .pbdg span{display:inline-block}
 .pod.me .block{outline:3px solid var(--red);outline-offset:2px}
 .lb-note{margin:0 0 10px;font-size:.8rem;color:#8a7a55;font-weight:700;text-align:center;font-style:italic}
 @media(max-width:560px){.pod .av svg{width:64px;height:64px}.p1 .av svg{width:84px;height:84px}.pod .block{padding-top:26px}.p1 .block{min-height:120px}.p2 .block{min-height:92px}.p3 .block{min-height:70px}}
