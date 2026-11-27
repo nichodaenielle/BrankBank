@@ -436,7 +436,7 @@ function renderWager() {
   if (!q) return endGame();
   const max = S.score;
   S.wager = { q, bet: Math.round(max / 2) };
-  $('#board').innerHTML = `<div class="pop wager"><h2>💰 Final Wager</h2><p>Board cleared! One last $500-level question from:</p>
+  $('#board').innerHTML = `<div class="pop wager"><h2>💰 Final Wager</h2><p>Board cleared! One last 🧠500-level question from:</p>
     <div class="wager-topic">${topicIcon(q.topic)} ${topicName(q.topic)} · ${TYPE_NAME[q.type]}</div>
     <p>Bet any part of your bank of <b>${money(max)}</b>. Correct = win your bet. Wrong = lose it. <b>One try only.</b></p>
     <div class="wager-bet" id="w-bet">${money(S.wager.bet)}</div>
@@ -446,7 +446,7 @@ function renderWager() {
   const set = v => { S.wager.bet = Math.max(0, Math.min(max, Math.round(v))); $('#w-range').value = S.wager.bet; $('#w-bet').textContent = money(S.wager.bet); };
   $('#w-range').oninput = e => set(+e.target.value);
   $$('.wager [data-p]').forEach(b => b.onclick = () => set(max * +b.dataset.p));
-  $('#w-go').onclick = () => { if (!S.wager.bet) return toast('Bet at least $1, or skip.'); openCard({ q, tier: 500, final: true, wager: S.wager.bet, done: false }); };
+  $('#w-go').onclick = () => { if (!S.wager.bet) return toast('Bet at least 🧠1, or skip.'); openCard({ q, tier: 500, final: true, wager: S.wager.bet, done: false }); };
   $('#w-skip').onclick = () => endGame();
   sfx.dd(); updateScore(false);
 }
